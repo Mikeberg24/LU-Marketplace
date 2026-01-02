@@ -1,47 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/app/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const run = async () => {
-      // If you used OTP/magic-link, Supabase may include ?code=...
-      const code = searchParams.get("code");
-
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error("exchangeCodeForSession error:", error);
-          router.replace("/login?error=callback");
-          return;
-        }
-      }
-      const { data: userData } = await supabase.auth.getUser();
-
-if (userData?.user) {
-  await supabase.from("profiles").upsert({
-    id: userData.user.id,
-    display_name: userData.user.email?.split("@")[0] ?? "Liberty Student",
-  });
-}
-
-
-      // After session is set, go back to marketplace
-      router.replace("/marketplace");
-    };
-
-    run();
-  }, [router, searchParams]);
+    // Supabase magic link/OAuth will set session cookies automatically on redirect.
+    // We just send them back to the app.
+    router.replace("/marketplace");
+  }, [router]);
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Signing you in…</h2>
-      <p>You’ll be redirected automatically.</p>
-    </div>
+    <main className="min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <h1 className="text-xl font-semibold text-zinc-900">Signing you in…</h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Redirecting back to the marketplace.
+        </p>
+      </div>
+    </main>
   );
 }
