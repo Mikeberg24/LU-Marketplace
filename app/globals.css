@@ -1,26 +1,128 @@
-@import "tailwindcss";
+:root{
+  --bg:#f6f7fb;
+  --surface:#ffffff;
+  --text:#0b1220;
+  --muted:#5b6577;
+  --border:rgba(15,23,42,.12);
+  --shadow: 0 10px 30px rgba(2,6,23,.08);
+  --radius:16px;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary:#0b1220;
+  --primaryText:#ffffff;
+  --soft:#f1f4fa;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+*{ box-sizing:border-box; }
+
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+a{ color: inherit; }
+
+.container{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 18px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.cardPad{ padding: 18px; }
+
+.h1{
+  font-size: 44px;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.subtle{
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.row{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grid3{
+  display:grid;
+  grid-template-columns: 1.2fr .8fr auto;
+  gap: 12px;
+}
+@media (max-width: 860px){
+  .grid3{ grid-template-columns: 1fr; }
+}
+
+.gridCards{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 900px){
+  .gridCards{ grid-template-columns: 1fr; }
+}
+
+.input, .select, .textarea{
+  width:100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  outline:none;
+}
+.input::placeholder, .textarea::placeholder{ color: rgba(91,101,119,.85); }
+
+.btn{
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-weight: 900;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.btnPrimary{
+  background: var(--primary);
+  color: var(--primaryText);
+  border-color: transparent;
+}
+.btnSoft{
+  background: var(--soft);
+  border-color: transparent;
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding: 6px 10px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hr{
+  height: 1px;
+  background: rgba(15,23,42,.08);
+  margin: 14px 0;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 
 type Listing = {
@@ -11,17 +11,27 @@ type Listing = {
   category: string;
   condition: string | null;
   location: string | null;
-  description: string | null;
   course_code: string | null;
+  image_url: string | null;
   created_at: string;
 };
 
-function formatPrice(price: number) {
-  return `$${price.toFixed(0)}`;
-}
+const CATEGORIES = [
+  "All",
+  "Textbooks & Academics",
+  "Electronics",
+  "Furniture",
+  "Clothing",
+  "Services",
+  "Other",
+];
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString();
+function formatDate(dt: string) {
+  try {
+    return new Date(dt).toLocaleString();
+  } catch {
+    return dt;
+  }
 }
 
 export default function MarketplacePage() {
@@ -29,210 +39,219 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All");
-  const [courseFilter, setCourseFilter] = useState("");
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("All");
 
-  const loadListings = async () => {
+  const load = async () => {
     setLoading(true);
     setErr(null);
 
     const { data, error } = await supabase
       .from("listings")
-      .select(
-        "id,title,price,category,condition,location,description,course_code,created_at"
-      )
+      .select("id,title,price,category,condition,location,course_code,image_url,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
       setErr(error.message);
       setListings([]);
-    } else {
-      setListings((data as Listing[]) ?? []);
+      setLoading(false);
+      return;
     }
 
+    setListings((data as Listing[]) ?? []);
     setLoading(false);
   };
 
   useEffect(() => {
-    loadListings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    load();
   }, []);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const cf = courseFilter.trim().toLowerCase();
+    const query = q.trim().toLowerCase();
 
     return listings.filter((l) => {
-      const matchesQuery =
-        !q ||
-        l.title.toLowerCase().includes(q) ||
-        (l.description ?? "").toLowerCase().includes(q);
+      const matchesCat = cat === "All" ? true : l.category === cat;
 
-      const matchesCategory = category === "All" || l.category === category;
+      if (!query) return matchesCat;
 
-      const matchesCourse =
-        !cf || (l.course_code ?? "").toLowerCase().includes(cf);
+      const hay = [
+        l.title ?? "",
+        l.category ?? "",
+        l.course_code ?? "",
+        l.condition ?? "",
+        l.location ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
 
-      return matchesQuery && matchesCategory && matchesCourse;
+      return matchesCat && hay.includes(query);
     });
-  }, [listings, query, category, courseFilter]);
+  }, [listings, q, cat]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
+    <div className="container">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="row" style={{ justifyContent: "space-between", gap: 16 }}>
         <div>
-          <h1 className="text-3xl font-extrabold">Marketplace</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Browse listings from verified Liberty students.
-          </p>
+          <h1 className="h1">Marketplace</h1>
+          <p className="subtle">Buy/sell with verified Liberty students.</p>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={loadListings}
-            type="button"
-            className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-          >
-            Refresh
+        <div className="row">
+          <button className="btn btnSoft" onClick={load} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
-
-          <Link
-            href="/sell"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white"
-          >
+          <Link className="btn btnPrimary" href="/sell">
             Post a Listing
           </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div>
-            <label className="text-sm font-semibold">Search</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-              placeholder="e.g., calculus, iClicker, gown…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+      <div className="card cardPad" style={{ marginTop: 16 }}>
+        <div className="grid3">
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search title, category, or course (e.g., MATH 132)"
+          />
 
-          <div>
-            <label className="text-sm font-semibold">Category</label>
-            <select
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option>All</option>
-              <option>Textbooks & Academics</option>
-              <option>Graduation</option>
-              <option>Events & Tickets</option>
-              <option>Campus Life</option>
-            </select>
-          </div>
+          <select className="select" value={cat} onChange={(e) => setCat(e.target.value)}>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
 
-          <div>
-            <label className="text-sm font-semibold">Course code (optional)</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-              placeholder="e.g., MATH 132"
-              value={courseFilter}
-              onChange={(e) => setCourseFilter(e.target.value)}
-            />
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <span className="badge">
+              {filtered.length} result{filtered.length === 1 ? "" : "s"}
+            </span>
           </div>
         </div>
+
+        {err && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid rgba(239,68,68,.25)",
+              background: "rgba(239,68,68,.08)",
+              color: "#7a1f1f",
+              fontWeight: 800,
+            }}
+          >
+            {err}
+          </div>
+        )}
       </div>
 
-      {/* States */}
-      {loading && (
-        <div className="rounded-2xl border bg-white p-6 text-gray-600 shadow-sm">
-          Loading listings…
-        </div>
-      )}
+      {/* Grid */}
+      <div style={{ marginTop: 16 }}>
+        {loading ? (
+          <div className="card cardPad">Loading listings…</div>
+        ) : filtered.length === 0 ? (
+          <div className="card cardPad">
+            <div style={{ fontWeight: 900, fontSize: 18 }}>No results</div>
+            <div className="subtle">Try a different search or category.</div>
+          </div>
+        ) : (
+          <div className="gridCards">
+            {filtered.map((l) => (
+              <Link
+                key={l.id}
+                href={`/listing/${l.id}`}
+                className="card"
+                style={{
+                  textDecoration: "none",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Image */}
+                <div
+                  style={{
+                    height: 170,
+                    background: "linear-gradient(135deg, rgba(2,6,23,.06), rgba(2,6,23,.02))",
+                    borderBottom: "1px solid rgba(15,23,42,.10)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                  }}
+                >
+                  {l.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={l.image_url}
+                      alt={l.title}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <div style={{ color: "rgba(91,101,119,.9)", fontWeight: 900 }}>
+                      No photo
+                    </div>
+                  )}
 
-      {!loading && err && (
-        <div className="rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="font-semibold">Couldn’t load listings</p>
-          <p className="mt-1 text-sm text-gray-700">{err}</p>
-          <button
-            onClick={loadListings}
-            className="mt-4 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white"
-            type="button"
-          >
-            Try again
-          </button>
-        </div>
-      )}
+                  {/* Price pill */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      background: "rgba(255,255,255,.92)",
+                      border: "1px solid rgba(15,23,42,.10)",
+                      borderRadius: 999,
+                      padding: "6px 10px",
+                      fontWeight: 950,
+                      boxShadow: "0 6px 18px rgba(2,6,23,.08)",
+                    }}
+                  >
+                    ${Number(l.price).toFixed(0)}
+                  </div>
+                </div>
 
-      {!loading && !err && filtered.length === 0 && (
-        <div className="rounded-2xl border bg-white p-10 text-center text-gray-700 shadow-sm">
-          <p className="text-lg font-semibold">No listings yet</p>
-          <p className="mt-2 text-sm text-gray-600">
-            Be the first to post something.
-          </p>
-          <Link
-            href="/sell"
-            className="mt-5 inline-block rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white"
-          >
-            Post a Listing
-          </Link>
-        </div>
-      )}
+                {/* Content */}
+                <div className="cardPad">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div style={{ fontWeight: 950, fontSize: 18, lineHeight: 1.2 }}>
+                      {l.title}
+                    </div>
+                  </div>
 
-      {/* Cards */}
-      {!loading && !err && filtered.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((l) => (
-            <Link
-              key={l.id}
-              href={`/listing/${l.id}`}
-              className="rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="truncate text-lg font-extrabold">{l.title}</h2>
-                  <div className="mt-1 text-sm text-gray-600">
+                  <div style={{ marginTop: 8, color: "rgba(91,101,119,.95)", fontWeight: 800 }}>
                     {l.category}
                     {l.course_code ? ` • ${l.course_code}` : ""}
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <div className="text-lg font-extrabold">
-                    {formatPrice(l.price)}
+                  <div className="row" style={{ marginTop: 10 }}>
+                    {l.condition ? <span className="badge">Condition: {l.condition}</span> : null}
+                    {l.location ? <span className="badge">Pickup: {l.location}</span> : null}
                   </div>
-                  <div className="mt-1 text-xs text-gray-500">
+
+                  <div style={{ marginTop: 12, color: "rgba(91,101,119,.9)", fontSize: 13, fontWeight: 800 }}>
                     {formatDate(l.created_at)}
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                {l.condition && (
-                  <span className="rounded-full border px-3 py-1">
-                    Condition: {l.condition}
-                  </span>
-                )}
-                {l.location && (
-                  <span className="rounded-full border px-3 py-1">
-                    Pickup: {l.location}
-                  </span>
-                )}
-              </div>
-
-              {l.description && (
-                <p className="mt-4 line-clamp-2 text-sm text-gray-700">
-                  {l.description}
-                </p>
-              )}
-            </Link>
-          ))}
-        </div>
-      )}
-    </main>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
