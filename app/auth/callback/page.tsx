@@ -6,3 +6,4 @@ export const revalidate = 0;
 export default function AuthCallback() {
   redirect("/marketplace");
 }
+
