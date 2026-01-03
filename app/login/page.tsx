@@ -1,125 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const sp = useSearchParams();
-
+function LoginInner() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // already signed in? bounce
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) router.replace("/marketplace");
-    });
+  const nextPath = useMemo(() => {
+    const n = searchParams.get("next");
+    // keep it safe: only allow internal paths
+    if (!n || !n.startsWith("/")) return "/marketplace";
+    return n;
+  }, [searchParams]);
 
-    const justConfirmed = sp.get("confirmed");
-    if (justConfirmed) {
-      setMsg("Confirmed. Redirecting…");
-      router.replace("/marketplace");
-    }
-  }, [router, sp]);
+  async function sendMagicLink() {
+    setStatus(null);
 
-  const sendLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
-    setMsg(null);
-
-    const clean = email.trim();
-    if (!clean) return setErr("Enter your email.");
-
-    setSending(true);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: clean,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setSending(false);
-      setErr(error.message);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setStatus("Please enter your email.");
       return;
     }
 
-    setSending(false);
-    setMsg("Check your email for the sign-in link.");
-  };
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: {
+          // after Supabase confirms, it will send user to /auth/callback
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+            nextPath
+          )}`,
+        },
+      });
+
+      if (error) throw error;
+
+      setStatus("Check your email for the sign-in link.");
+      setEmail("");
+    } catch (e: any) {
+      setStatus(e?.message ?? "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="container" style={{ maxWidth: 720 }}>
-      <div className="card cardPad">
-        <h1 className="h1" style={{ fontSize: 40 }}>Sign in</h1>
-        <p className="subtle">
-          We’ll email you a magic link. No password.
+    <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
+      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>Sign in</h1>
+      <p style={{ opacity: 0.75, marginBottom: 24 }}>
+        Use your Liberty email for verification.
+      </p>
+
+      <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
+        Email
+      </label>
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@liberty.edu"
+        type="email"
+        style={{
+          width: "100%",
+          padding: "12px 14px",
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,0.15)",
+          marginBottom: 14,
+        }}
+      />
+
+      <button
+        onClick={sendMagicLink}
+        disabled={loading}
+        style={{
+          width: "100%",
+          padding: "12px 14px",
+          borderRadius: 12,
+          border: "none",
+          fontWeight: 800,
+          cursor: loading ? "not-allowed" : "pointer",
+        }}
+      >
+        {loading ? "Sending..." : "Send magic link"}
+      </button>
+
+      {status && (
+        <p style={{ marginTop: 14, fontWeight: 600, opacity: 0.85 }}>
+          {status}
         </p>
+      )}
+    </main>
+  );
+}
 
-        {err ? (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid rgba(239,68,68,.25)",
-              background: "rgba(239,68,68,.08)",
-              color: "#7a1f1f",
-              fontWeight: 900,
-            }}
-          >
-            {err}
-          </div>
-        ) : null}
-
-        {msg ? (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid rgba(34,197,94,.25)",
-              background: "rgba(34,197,94,.10)",
-              color: "#14532d",
-              fontWeight: 900,
-            }}
-          >
-            {msg}
-          </div>
-        ) : null}
-
-        <form onSubmit={sendLink} style={{ marginTop: 14 }}>
-          <div style={{ fontWeight: 950, marginBottom: 6 }}>Email</div>
-          <input
-            className="input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@liberty.edu"
-          />
-
-          <div className="row" style={{ justifyContent: "space-between", marginTop: 14 }}>
-            <Link className="btn btnSoft" href="/marketplace">
-              Back
-            </Link>
-
-            <button className="btn btnPrimary" type="submit" disabled={sending}>
-              {sending ? "Sending..." : "Send sign-in link"}
-            </button>
-          </div>
-        </form>
-
-        <div className="hr" />
-
-        <div className="subtle" style={{ fontSize: 13 }}>
-          Tip: use your Liberty email if you want this to feel “campus verified”.
-        </div>
-      </div>
-    </div>
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
