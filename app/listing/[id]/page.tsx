@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabaseClient";
-import { CATEGORIES, FulfillmentMethod } from "@/app/lib/constants";
+import { supabase } from "@/lib/supabaseClient";
+import { CATEGORIES, FulfillmentMethod } from "@/lib/constants";
+
 
 
 export default function NewListingPage() {
