@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/app/lib/supabaseClient";
+import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import PrimaryTabs from "@/components/PrimaryTabs";
 
 type Listing = {
   id: string;

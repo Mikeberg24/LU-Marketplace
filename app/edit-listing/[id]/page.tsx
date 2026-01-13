@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabaseClient";
-
+import { supabase } from "../lib/supabaseClient";
 type Listing = {
   id: string;
   user_id: string;
@@ -24,11 +23,12 @@ const CATEGORIES = [
   "Furniture",
   "Clothing",
   "Services",
+  "tickets",
   "Other",
 ];
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
-const LOCATIONS = ["On-campus", "Off-campus", "Meetup"];
+const LOCATIONS = ["On-campus", "Off-campus", "Meetup", "Online Transfer"];
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();

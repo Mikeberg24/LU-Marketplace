@@ -10,11 +10,12 @@ const CATEGORIES = [
   "Furniture",
   "Clothing",
   "Services",
+  "Tickets",
   "Other",
 ];
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
-const LOCATIONS = ["On-campus", "Off-campus", "Meetup"];
+const LOCATIONS = ["On-campus", "Off-campus", "Meetup", "Online Transfer"];
 
 export default function SellPage() {
   const router = useRouter();
