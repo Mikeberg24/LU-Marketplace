@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
+
 
 type Listing = {
   id: string;
