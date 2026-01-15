@@ -12,9 +12,6 @@ type HousingPost = {
   post_type: "roommate" | "sublease" | string;
   title: string;
   description: string | null;
-  price: number | null;
-  location: string | null;
-  image_url: string | null;
 };
 
 function formatDate(d: string) {
@@ -38,7 +35,7 @@ export default function HousingPage() {
 
     const { data, error } = await supabase
       .from("housing_posts")
-      .select("id,created_at,user_id,post_type,title,description,price,location,image_url")
+      .select("id,created_at,user_id,post_type,title,description")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -67,6 +64,7 @@ export default function HousingPage() {
     <div className="container">
       <PrimaryTabs />
 
+      {/* Header */}
       <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>
           <h1 className="h1">Housing</h1>
@@ -74,9 +72,10 @@ export default function HousingPage() {
         </div>
 
         <div className="row" style={{ gap: 10 }}>
-          <button className="btn btnSoft" onClick={load} disabled={loading}>
+          <button className="btn btnSoft" onClick={load} disabled={loading} type="button">
             {loading ? "Refreshing..." : "Refresh"}
           </button>
+
           <Link className="btn btnPrimary" href={postHref}>
             {postLabel}
           </Link>
@@ -86,22 +85,23 @@ export default function HousingPage() {
       {/* Tabs */}
       <div className="row" style={{ gap: 10, marginTop: 16 }}>
         <button
+          type="button"
           className={activeTab === "roommate" ? "btn btnPrimary" : "btn btnSoft"}
           onClick={() => setActiveTab("roommate")}
-          type="button"
         >
           Find Roommates
         </button>
 
         <button
+          type="button"
           className={activeTab === "sublease" ? "btn btnPrimary" : "btn btnSoft"}
           onClick={() => setActiveTab("sublease")}
-          type="button"
         >
           Subleases
         </button>
       </div>
 
+      {/* Error */}
       {err && (
         <div
           style={{
@@ -118,7 +118,7 @@ export default function HousingPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* Posts */}
       <div style={{ marginTop: 16 }}>
         {loading ? (
           <div className="card cardPad">Loading…</div>
@@ -140,49 +140,13 @@ export default function HousingPage() {
                   </div>
                 </div>
 
-                {p.image_url && activeTab === "sublease" ? (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      height: 240,
-                      background: "#f8fafc",
-                      borderRadius: 14,
-                      overflow: "hidden",
-                      border: "1px solid rgba(15,23,42,.10)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={p.image_url}
-                      alt={p.title}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "contain",
-                        display: "block",
-                      }}
-                    />
-                  </div>
-                ) : null}
-
                 {p.description ? (
                   <div style={{ marginTop: 10, lineHeight: 1.5 }}>{p.description}</div>
-                ) : null}
-
-                <div className="row" style={{ gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                  {p.location ? <span className="badge">Location: {p.location}</span> : null}
-
-                  {activeTab === "sublease" && p.price != null ? (
-                    <span className="badge">Rent: ${p.price}/mo</span>
-                  ) : null}
-
-                  {activeTab === "roommate" && p.price != null ? (
-                    <span className="badge">Budget: ${p.price}</span>
-                  ) : null}
-                </div>
+                ) : (
+                  <div className="subtle" style={{ marginTop: 10 }}>
+                    No description provided.
+                  </div>
+                )}
               </div>
             ))}
           </div>
