@@ -1,23 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
 import PrimaryTabs from "@/components/PrimaryTabs";
+import { supabase } from "@/lib/supabaseClient";
 
-async function uploadHousingImage(file: File, userId: string) {
-  const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `${userId}/${Date.now()}.${ext}`;
+type UploadResult = {
+  image_url: string;
+  image_path: string;
+};
 
-  const { error } = await supabase.storage
+async function uploadHousingImage(file: File, userId: string): Promise<UploadResult> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const safeExt = ext.replace(/[^a-z0-9]/g, "") || "jpg";
+  const image_path = `${userId}/${Date.now()}.${safeExt}`;
+
+  const { error: uploadErr } = await supabase.storage
     .from("housing-images")
-    .upload(fileName, file, { upsert: true });
+    .upload(image_path, file, {
+      upsert: true,
+      contentType: file.type || "image/jpeg",
+    });
 
-  if (error) throw error;
+  if (uploadErr) throw uploadErr;
 
-  const { data } = supabase.storage.from("housing-images").getPublicUrl(fileName);
-  return data.publicUrl;
+  const { data } = supabase.storage.from("housing-images").getPublicUrl(image_path);
+  const image_url = data.publicUrl;
+
+  return { image_url, image_path };
 }
 
 export default function HousingNewPage() {
@@ -25,50 +36,76 @@ export default function HousingNewPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(""); // rent per month
+
+  // rent per month
+  const [price, setPrice] = useState("");
+
   const [location, setLocation] = useState("");
   const [housingType, setHousingType] = useState("Apartment");
   const [leaseType, setLeaseType] = useState("Sublease");
-  const [availableFrom, setAvailableFrom] = useState(""); // optional text/date
+  const [availableFrom, setAvailableFrom] = useState("");
+
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const previewUrl = useMemo(() => {
+    if (!imageFile) return null;
+    return URL.createObjectURL(imageFile);
+  }, [imageFile]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
 
-    if (!title.trim()) return setErr("Please add a title.");
-    if (!price.trim() || Number.isNaN(Number(price))) return setErr("Please enter a valid rent amount.");
+    const t = title.trim();
+    const d = description.trim();
+    const rentStr = price.trim();
+    const rentNum = rentStr ? Number(rentStr) : NaN;
+
+    if (!t) return setErr("Please add a title.");
+    if (!rentStr || Number.isNaN(rentNum)) return setErr("Please enter a valid rent amount.");
 
     setLoading(true);
 
     try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authErr,
+      } = await supabase.auth.getUser();
+
       if (authErr) throw authErr;
+      if (!user) throw new Error("You must be signed in to post housing.");
 
-      const user = authData.user;
-      if (!user) {
-        setLoading(false);
-        return setErr("You must be signed in to post housing.");
-      }
+      // Upload image (optional)
+      let image_url: string | null = null;
+      let image_path: string | null = null;
 
-      let imageUrl: string | null = null;
       if (imageFile) {
-        imageUrl = await uploadHousingImage(imageFile, user.id);
+        const up = await uploadHousingImage(imageFile, user.id);
+        image_url = up.image_url;
+        image_path = up.image_path;
       }
 
+      // IMPORTANT:
+      // - user_id must be included (RLS insert policy checks it)
+      // - post_type must be set so the Housing page can filter correctly
       const { error: insertErr } = await supabase.from("housing_posts").insert({
-        title: title.trim(),
-        description: description.trim() || null,
-        price: Number(price),
+        user_id: user.id,
+        post_type: "sublease",
+
+        title: t,
+        description: d || null,
+        price: rentNum,
+
         location: location.trim() || null,
         housing_type: housingType,
         lease_type: leaseType,
         available_from: availableFrom.trim() || null,
-        image_url: imageUrl,
-        user_id: user.id,
+
+        image_url,
+        image_path,
       });
 
       if (insertErr) throw insertErr;
@@ -88,7 +125,7 @@ export default function HousingNewPage() {
       <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>
           <h1 className="h1">Post Housing</h1>
-          <p className="subtle">Add a housing listing for Liberty students.</p>
+          <p className="subtle">Add a sublease listing for Liberty students.</p>
         </div>
 
         <Link className="btn btnSoft" href="/housing">
@@ -97,30 +134,27 @@ export default function HousingNewPage() {
       </div>
 
       <form onSubmit={onSubmit} className="card cardPad" style={{ marginTop: 16 }}>
-        {/* Title */}
         <div style={{ marginBottom: 12 }}>
           <label className="label">Title</label>
           <input
             className="input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Sublease near campus — 2 bed / 2 bath"
+            placeholder="Ex: Sublease at Cornerstone — 2 bed / 2 bath"
           />
         </div>
 
-        {/* Description */}
         <div style={{ marginBottom: 12 }}>
           <label className="label">Description</label>
           <textarea
             className="input"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Include bedrooms/bathrooms, utilities, parking, roommates, rules, etc."
+            placeholder="Bedrooms/bathrooms, utilities, parking, roommates, rules, etc."
             style={{ minHeight: 110 }}
           />
         </div>
 
-        {/* Rent + Location */}
         <div className="grid3" style={{ marginBottom: 12 }}>
           <div>
             <label className="label">Rent (per month)</label>
@@ -177,7 +211,6 @@ export default function HousingNewPage() {
           </div>
         </div>
 
-        {/* Photo upload */}
         <div style={{ marginBottom: 12 }}>
           <label className="label">Photo (optional)</label>
           <input
@@ -189,6 +222,17 @@ export default function HousingNewPage() {
           <div className="subtle" style={{ marginTop: 6 }}>
             Exterior or living room photos work best.
           </div>
+
+          {previewUrl ? (
+            <div style={{ marginTop: 12, borderRadius: 16, overflow: "hidden", border: "1px solid rgba(15,23,42,.10)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{ width: "100%", maxHeight: 320, objectFit: "cover", display: "block" }}
+              />
+            </div>
+          ) : null}
         </div>
 
         {err && (
