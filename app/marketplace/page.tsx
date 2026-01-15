@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import PrimaryTabs from "@/components/PrimaryTabs";
 
 type Listing = {
   id: string;
@@ -39,7 +38,6 @@ export default function MarketplacePage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
 
@@ -76,12 +74,13 @@ export default function MarketplacePage() {
       if (!query) return matchesCat;
 
       const hay = [
-        l.title ?? "",
-        l.category ?? "",
-        l.course_code ?? "",
-        l.condition ?? "",
-        l.location ?? "",
+        l.title,
+        l.category,
+        l.course_code,
+        l.condition,
+        l.location,
       ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
@@ -95,17 +94,12 @@ export default function MarketplacePage() {
       <div className="row" style={{ justifyContent: "space-between", gap: 16 }}>
         <div>
           <h1 className="h1">Marketplace</h1>
-          <p className="subtle">Buy/sell with verified Liberty students.</p>
+          <p className="subtle">Buy and sell with verified Liberty students.</p>
         </div>
 
-        <div className="row">
-          <button className="btn btnSoft" onClick={load} disabled={loading}>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-          <Link className="btn btnPrimary" href="/sell">
-            Post a Listing
-          </Link>
-        </div>
+        <Link className="btn btnPrimary" href="/sell">
+          Post a Listing
+        </Link>
       </div>
 
       {/* Filters */}
@@ -118,7 +112,11 @@ export default function MarketplacePage() {
             placeholder="Search title, category, or course (e.g., MATH 132)"
           />
 
-          <select className="select" value={cat} onChange={(e) => setCat(e.target.value)}>
+          <select
+            className="select"
+            value={cat}
+            onChange={(e) => setCat(e.target.value)}
+          >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -166,16 +164,13 @@ export default function MarketplacePage() {
                 key={l.id}
                 href={`/listing/${l.id}`}
                 className="card"
-                style={{
-                  textDecoration: "none",
-                  overflow: "hidden",
-                }}
+                style={{ textDecoration: "none", overflow: "hidden" }}
               >
-                {/* Image */}
+                {/* IMAGE (NO CROP) */}
                 <div
                   style={{
-                    height: 170,
-                    background: "linear-gradient(135deg, rgba(2,6,23,.06), rgba(2,6,23,.02))",
+                    height: 220,
+                    background: "#f8fafc",
                     borderBottom: "1px solid rgba(15,23,42,.10)",
                     display: "flex",
                     alignItems: "center",
@@ -189,29 +184,29 @@ export default function MarketplacePage() {
                       src={l.image_url}
                       alt={l.title}
                       style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
                         display: "block",
                       }}
                     />
                   ) : (
-                    <div style={{ color: "rgba(91,101,119,.9)", fontWeight: 900 }}>
+                    <div style={{ fontWeight: 900, color: "rgba(91,101,119,.9)" }}>
                       No photo
                     </div>
                   )}
 
-                  {/* Price pill */}
+                  {/* Price */}
                   <div
                     style={{
                       position: "absolute",
                       top: 12,
                       right: 12,
-                      background: "rgba(255,255,255,.92)",
-                      border: "1px solid rgba(15,23,42,.10)",
+                      background: "white",
                       borderRadius: 999,
                       padding: "6px 10px",
                       fontWeight: 950,
+                      border: "1px solid rgba(15,23,42,.10)",
                       boxShadow: "0 6px 18px rgba(2,6,23,.08)",
                     }}
                   >
@@ -219,32 +214,38 @@ export default function MarketplacePage() {
                   </div>
                 </div>
 
-                {/* Content */}
+                {/* CONTENT */}
                 <div className="cardPad">
+                  <div style={{ fontWeight: 950, fontSize: 18 }}>{l.title}</div>
+
                   <div
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "flex-start",
+                      marginTop: 6,
+                      color: "rgba(91,101,119,.95)",
+                      fontWeight: 800,
                     }}
                   >
-                    <div style={{ fontWeight: 950, fontSize: 18, lineHeight: 1.2 }}>
-                      {l.title}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 8, color: "rgba(91,101,119,.95)", fontWeight: 800 }}>
                     {l.category}
                     {l.course_code ? ` • ${l.course_code}` : ""}
                   </div>
 
                   <div className="row" style={{ marginTop: 10 }}>
-                    {l.condition ? <span className="badge">Condition: {l.condition}</span> : null}
-                    {l.location ? <span className="badge">Pickup: {l.location}</span> : null}
+                    {l.condition && (
+                      <span className="badge">Condition: {l.condition}</span>
+                    )}
+                    {l.location && (
+                      <span className="badge">Pickup: {l.location}</span>
+                    )}
                   </div>
 
-                  <div style={{ marginTop: 12, color: "rgba(91,101,119,.9)", fontSize: 13, fontWeight: 800 }}>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      color: "rgba(91,101,119,.9)",
+                      fontSize: 13,
+                      fontWeight: 800,
+                    }}
+                  >
                     {formatDate(l.created_at)}
                   </div>
                 </div>

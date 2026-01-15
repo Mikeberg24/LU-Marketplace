@@ -1,203 +1,220 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import PrimaryTabs from "@/components/PrimaryTabs";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import PrimaryTabs from "@/components/PrimaryTabs";
 
-export default function NewHousingPostPage() {
+async function uploadHousingImage(file: File, userId: string) {
+  const ext = file.name.split(".").pop() || "jpg";
+  const fileName = `${userId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("housing-images")
+    .upload(fileName, file, { upsert: true });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("housing-images").getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+export default function HousingNewPage() {
   const router = useRouter();
 
-  const [isAuthed, setIsAuthed] = useState(false);
-
-  const [postType, setPostType] = useState<"roommate" | "sublease">("roommate");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-
-  const [gradYear, setGradYear] = useState<string>("");
-  const [newToCampus, setNewToCampus] = useState(false);
-
-  const [budgetMin, setBudgetMin] = useState<string>("");
-  const [budgetMax, setBudgetMax] = useState<string>("");
-
-  const [moveInDate, setMoveInDate] = useState<string>("");
-  const [location, setLocation] = useState<string>("");
-
-  const [contactMethod, setContactMethod] = useState<string>("Instagram");
-  const [contactValue, setContactValue] = useState<string>("");
+  const [price, setPrice] = useState(""); // rent per month
+  const [location, setLocation] = useState("");
+  const [housingType, setHousingType] = useState("Apartment");
+  const [leaseType, setLeaseType] = useState("Sublease");
+  const [availableFrom, setAvailableFrom] = useState(""); // optional text/date
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setIsAuthed(!!data.session));
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
+    setErr(null);
 
-    if (!title.trim()) {
-      setErrorMsg("Title is required.");
-      return;
-    }
-    if (!contactValue.trim()) {
-      setErrorMsg("Please add a contact handle/value.");
-      return;
-    }
+    if (!title.trim()) return setErr("Please add a title.");
+    if (!price.trim() || Number.isNaN(Number(price))) return setErr("Please enter a valid rent amount.");
 
     setLoading(true);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData.session?.user;
-    if (!user) {
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+
+      const user = authData.user;
+      if (!user) {
+        setLoading(false);
+        return setErr("You must be signed in to post housing.");
+      }
+
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadHousingImage(imageFile, user.id);
+      }
+
+      const { error: insertErr } = await supabase.from("housing_posts").insert({
+        title: title.trim(),
+        description: description.trim() || null,
+        price: Number(price),
+        location: location.trim() || null,
+        housing_type: housingType,
+        lease_type: leaseType,
+        available_from: availableFrom.trim() || null,
+        image_url: imageUrl,
+        user_id: user.id,
+      });
+
+      if (insertErr) throw insertErr;
+
+      router.push("/housing");
+      router.refresh();
+    } catch (e: any) {
+      setErr(e?.message ?? "Something went wrong.");
       setLoading(false);
-      setErrorMsg("You must be logged in.");
-      return;
     }
-
-    const payload = {
-      user_id: user.id,
-      post_type: postType,
-      title: title.trim(),
-      description: description.trim() || null,
-      grad_year: gradYear ? Number(gradYear) : null,
-      new_to_campus: newToCampus,
-      budget_min: budgetMin ? Number(budgetMin) : null,
-      budget_max: budgetMax ? Number(budgetMax) : null,
-      move_in_date: moveInDate || null,
-      location: location.trim() || null,
-      contact_method: contactMethod.trim() || null,
-      contact_value: contactValue.trim() || null
-    };
-
-    const { error } = await supabase.from("housing_posts").insert(payload);
-
-    setLoading(false);
-
-    if (error) {
-      setErrorMsg(error.message);
-      return;
-    }
-
-    router.push("/housing");
-  }
-
-  if (!isAuthed) {
-    return (
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
-        <PrimaryTabs />
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 14 }}>
-          <b>You must be logged in to post.</b>
-        </div>
-      </div>
-    );
-  }
-
-  const years = Array.from({ length: 7 }, (_, i) => new Date().getFullYear() + i);
+  };
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
+    <div className="container">
       <PrimaryTabs />
 
-      <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 12 }}>Post in Housing</h1>
-
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <label style={{ fontWeight: 900 }}>Post type</label>
-          <select value={postType} onChange={(e) => setPostType(e.target.value as any)} style={{ padding: 10, borderRadius: 10 }}>
-            <option value="roommate">Find Roommate</option>
-            <option value="sublease">Sublease</option>
-          </select>
+      <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
+        <div>
+          <h1 className="h1">Post Housing</h1>
+          <p className="subtle">Add a housing listing for Liberty students.</p>
         </div>
 
-        <div style={{ display: "grid", gap: 6 }}>
-          <label style={{ fontWeight: 900 }}>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
+        <Link className="btn btnSoft" href="/housing">
+          Back to Housing
+        </Link>
+      </div>
+
+      <form onSubmit={onSubmit} className="card cardPad" style={{ marginTop: 16 }}>
+        {/* Title */}
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Title</label>
+          <input
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: Sublease near campus — 2 bed / 2 bath"
+          />
         </div>
 
-        <div style={{ display: "grid", gap: 6 }}>
-          <label style={{ fontWeight: 900 }}>Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={{ padding: 10, borderRadius: 10, minHeight: 120 }} />
+        {/* Description */}
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Description</label>
+          <textarea
+            className="input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Include bedrooms/bathrooms, utilities, parking, roommates, rules, etc."
+            style={{ minHeight: 110 }}
+          />
         </div>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 900 }}>Grad year</label>
-            <select value={gradYear} onChange={(e) => setGradYear(e.target.value)} style={{ padding: 10, borderRadius: 10 }}>
-              <option value="">(optional)</option>
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+        {/* Rent + Location */}
+        <div className="grid3" style={{ marginBottom: 12 }}>
+          <div>
+            <label className="label">Rent (per month)</label>
+            <input
+              className="input"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Ex: 650"
+              inputMode="numeric"
+            />
           </div>
 
-          <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 28 }}>
-            <input type="checkbox" checked={newToCampus} onChange={(e) => setNewToCampus(e.target.checked)} />
-            <span style={{ fontWeight: 900 }}>New to campus</span>
-          </label>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 900 }}>Budget min</label>
-            <input value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
-          </div>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 900 }}>Budget max</label>
-            <input value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 900 }}>Move-in date</label>
-            <input type="date" value={moveInDate} onChange={(e) => setMoveInDate(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
-          </div>
-          <div style={{ display: "grid", gap: 6, flex: 1 }}>
-            <label style={{ fontWeight: 900 }}>Location</label>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontWeight: 900 }}>Contact method</label>
-            <select value={contactMethod} onChange={(e) => setContactMethod(e.target.value)} style={{ padding: 10, borderRadius: 10 }}>
-              <option>Instagram</option>
-              <option>Text</option>
-              <option>Email</option>
-              <option>Snapchat</option>
+          <div>
+            <label className="label">Housing Type</label>
+            <select className="select" value={housingType} onChange={(e) => setHousingType(e.target.value)}>
+              <option>Apartment</option>
+              <option>House</option>
+              <option>Townhome</option>
+              <option>Dorm / Room</option>
               <option>Other</option>
             </select>
           </div>
-          <div style={{ display: "grid", gap: 6, flex: 1 }}>
-            <label style={{ fontWeight: 900 }}>Contact value (handle / # / email)</label>
-            <input value={contactValue} onChange={(e) => setContactValue(e.target.value)} style={{ padding: 10, borderRadius: 10 }} />
+
+          <div>
+            <label className="label">Lease Type</label>
+            <select className="select" value={leaseType} onChange={(e) => setLeaseType(e.target.value)}>
+              <option>Sublease</option>
+              <option>Lease takeover</option>
+              <option>Room available</option>
+              <option>Other</option>
+            </select>
           </div>
         </div>
 
-        {errorMsg ? (
-          <div style={{ padding: 12, borderRadius: 12, background: "#fee2e2", fontWeight: 800 }}>
-            {errorMsg}
+        <div className="grid3" style={{ marginBottom: 12 }}>
+          <div style={{ gridColumn: "span 2" as any }}>
+            <label className="label">Location</label>
+            <input
+              className="input"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Ex: On-campus / The Vue / Cornerstone / Wards Rd"
+            />
           </div>
-        ) : null}
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            background: "#111111",
-            color: "#ffffff",
-            fontWeight: 900,
-            border: "none",
-            cursor: "pointer"
-          }}
-        >
-          {loading ? "Posting..." : "Post"}
-        </button>
+          <div>
+            <label className="label">Available From (optional)</label>
+            <input
+              className="input"
+              value={availableFrom}
+              onChange={(e) => setAvailableFrom(e.target.value)}
+              placeholder="Ex: Feb 1"
+            />
+          </div>
+        </div>
+
+        {/* Photo upload */}
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Photo (optional)</label>
+          <input
+            className="input"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          />
+          <div className="subtle" style={{ marginTop: 6 }}>
+            Exterior or living room photos work best.
+          </div>
+        </div>
+
+        {err && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: 12,
+              borderRadius: 12,
+              border: "1px solid rgba(239,68,68,.25)",
+              background: "rgba(239,68,68,.08)",
+              color: "#7a1f1f",
+              fontWeight: 800,
+            }}
+          >
+            {err}
+          </div>
+        )}
+
+        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end", gap: 12 }}>
+          <Link className="btn btnSoft" href="/housing">
+            Cancel
+          </Link>
+          <button className="btn btnPrimary" type="submit" disabled={loading}>
+            {loading ? "Posting..." : "Post Housing"}
+          </button>
+        </div>
       </form>
     </div>
   );
