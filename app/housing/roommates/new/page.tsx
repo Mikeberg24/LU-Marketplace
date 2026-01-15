@@ -1,62 +1,68 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import PrimaryTabs from "@/components/PrimaryTabs";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function RoommateNewPage() {
+export default function NewRoommatePostPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [budget, setBudget] = useState<string>("");
   const [location, setLocation] = useState("");
-  const [budget, setBudget] = useState(""); // we’ll store as price for now
   const [contact, setContact] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
 
-    if (!title.trim()) return setErr("Please add a title.");
-    if (!description.trim()) return setErr("Please add a description.");
-    if (!budget.trim() || Number.isNaN(Number(budget))) return setErr("Please enter a valid budget number.");
+    const t = title.trim();
+    const d = description.trim();
+
+    if (!t) return setErr("Please add a title.");
+    if (!d) return setErr("Please add a short description.");
 
     setLoading(true);
 
-    try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr) throw authErr;
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
 
-      const user = authData.user;
-      if (!user) {
-        setLoading(false);
-        return setErr("You must be signed in to post.");
-      }
-
-      // Insert into the SAME TABLE, just change post_type
-      const { error: insertErr } = await supabase.from("housing_posts").insert({
-        post_type: "roommate",
-        title: title.trim(),
-        description: `${description.trim()}\n\nContact: ${contact.trim() || "N/A"}`,
-        contact: contact.trim() || null,
-        location: location.trim() || null,
-        price: Number(budget), // using price as budget for now (safe, since price exists)
-        user_id: user.id,
-      });
-
-      if (insertErr) throw insertErr;
-
-      router.push("/housing");
-      router.refresh();
-    } catch (e: any) {
-      setErr(e?.message ?? "Something went wrong.");
+    if (userErr || !user) {
       setLoading(false);
+      return setErr("You must be signed in.");
     }
+
+    const b = budget.trim() ? Number(budget) : null;
+    if (budget.trim() && Number.isNaN(b)) {
+      setLoading(false);
+      return setErr("Budget must be a number.");
+    }
+
+    const { error: insertErr } = await supabase.from("housing_posts").insert({
+      user_id: user.id,
+      post_type: "roommate",
+      title: t,
+      description: d,
+      budget: b,
+      location: location.trim() || null,
+      contact: contact.trim() || null,
+    });
+
+    if (insertErr) {
+      setLoading(false);
+      return setErr(insertErr.message);
+    }
+
+    setLoading(false);
+    router.push("/housing");
   };
 
   return (
@@ -74,60 +80,63 @@ export default function RoommateNewPage() {
         </Link>
       </div>
 
-      <form onSubmit={onSubmit} className="card cardPad" style={{ marginTop: 16 }}>
-        <div style={{ marginBottom: 12 }}>
-          <label className="label">Title</label>
-          <input
-            className="input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Fall 2026 Roommate"
-          />
-        </div>
+      <form onSubmit={submit} className="card cardPad" style={{ marginTop: 16 }}>
+        <label style={{ fontWeight: 900 }}>Title</label>
+        <input
+          className="input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Ex: Fall 2026 roommate"
+          style={{ marginTop: 6 }}
+        />
 
-        <div style={{ marginBottom: 12 }}>
-          <label className="label">About you / what you want</label>
+        <div style={{ marginTop: 14 }}>
+          <label style={{ fontWeight: 900 }}>About you / what you want</label>
           <textarea
-            className="input"
+            className="textarea"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Grad year, habits, schedule, preferences, etc."
-            style={{ minHeight: 140 }}
+            placeholder="Share what you're looking for, lifestyle, sleep schedule, etc."
+            rows={7}
+            style={{ marginTop: 6 }}
           />
         </div>
 
-        <div className="grid3" style={{ marginBottom: 12 }}>
+        <div className="grid2" style={{ marginTop: 14 }}>
           <div>
-            <label className="label">Budget (per semester or month)</label>
+            <label style={{ fontWeight: 900 }}>Budget (per semester or month)</label>
             <input
               className="input"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="Ex: 600"
+              style={{ marginTop: 6 }}
               inputMode="numeric"
             />
           </div>
 
-          <div style={{ gridColumn: "span 2" as any }}>
-            <label className="label">Location (optional)</label>
+          <div>
+            <label style={{ fontWeight: 900 }}>Location (optional)</label>
             <input
               className="input"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ex: Commons 2 / On-campus / Wards Rd"
+              placeholder="Ex: The Hill, Commons, Off-campus"
+              style={{ marginTop: 6 }}
             />
           </div>
         </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <label className="label">Contact (optional)</label>
+        <div style={{ marginTop: 14 }}>
+          <label style={{ fontWeight: 900 }}>Contact (optional)</label>
           <input
             className="input"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
-            placeholder="Ex: Text 555-555-5555 or IG @username"
+            placeholder="Ex: Text 555-123-4567 or IG @username"
+            style={{ marginTop: 6 }}
           />
-          <div className="subtle" style={{ marginTop: 6 }}>
+          <div className="subtle" style={{ marginTop: 8 }}>
             Only share what you’re comfortable with.
           </div>
         </div>
@@ -135,7 +144,7 @@ export default function RoommateNewPage() {
         {err && (
           <div
             style={{
-              marginTop: 10,
+              marginTop: 14,
               padding: 12,
               borderRadius: 12,
               border: "1px solid rgba(239,68,68,.25)",
@@ -148,10 +157,11 @@ export default function RoommateNewPage() {
           </div>
         )}
 
-        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end", gap: 12 }}>
+        <div className="row" style={{ justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
           <Link className="btn btnSoft" href="/housing">
             Cancel
           </Link>
+
           <button className="btn btnPrimary" type="submit" disabled={loading}>
             {loading ? "Posting..." : "Post Roommate"}
           </button>
