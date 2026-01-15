@@ -10,9 +10,17 @@ type HousingPost = {
   created_at: string;
   user_id: string;
   post_type: "roommate" | "sublease" | string;
+
   title: string;
   description: string | null;
+
+  location: string | null;
   contact: string | null;
+
+  image_url: string | null;
+
+  budget: number | null; // roommate
+  rent: number | null; // sublease
 };
 
 function formatDate(d: string) {
@@ -36,7 +44,7 @@ export default function HousingPage() {
 
     const { data, error } = await supabase
       .from("housing_posts")
-      .select("id,created_at,user_id,post_type,title,description,contact")
+      .select("id,created_at,user_id,post_type,title,description,location,contact,image_url,budget,rent")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -46,7 +54,7 @@ export default function HousingPage() {
       return;
     }
 
-    setPosts((data as HousingPost[]) ?? []);
+    setPosts(Array.isArray(data) ? (data as HousingPost[]) : []);
     setLoading(false);
   };
 
@@ -141,6 +149,23 @@ export default function HousingPage() {
                   </div>
                 </div>
 
+                {/* Image */}
+                {p.image_url ? (
+                  <img
+                    src={p.image_url}
+                    alt={p.title}
+                    style={{
+                      width: 140,
+                      height: 140,
+                      borderRadius: 14,
+                      objectFit: "cover",
+                      marginTop: 12,
+                      border: "1px solid rgba(15,23,42,.12)",
+                    }}
+                  />
+                ) : null}
+
+                {/* Description */}
                 {p.description ? (
                   <div style={{ marginTop: 10, lineHeight: 1.5 }}>{p.description}</div>
                 ) : (
@@ -149,6 +174,28 @@ export default function HousingPage() {
                   </div>
                 )}
 
+                {/* Meta row */}
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "flex",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    fontWeight: 850,
+                  }}
+                >
+                  {p.location ? <span>Location: {p.location}</span> : null}
+
+                  {p.post_type === "roommate" && p.budget != null ? (
+                    <span>Budget: {p.budget}</span>
+                  ) : null}
+
+                  {p.post_type === "sublease" && p.rent != null ? (
+                    <span>Rent: {p.rent}/mo</span>
+                  ) : null}
+                </div>
+
+                {/* Contact */}
                 <div
                   style={{
                     marginTop: 12,
@@ -165,9 +212,7 @@ export default function HousingPage() {
                 >
                   <div style={{ fontWeight: 900 }}>
                     Contact:{" "}
-                    <span style={{ fontWeight: 800 }}>
-                      {p.contact ? p.contact : "Not provided"}
-                    </span>
+                    <span style={{ fontWeight: 800 }}>{p.contact ? p.contact : "Not provided"}</span>
                   </div>
 
                   {p.contact ? (

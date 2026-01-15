@@ -1,68 +1,84 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import PrimaryTabs from "@/components/PrimaryTabs";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function NewRoommatePostPage() {
+async function uploadHousingImage(file: File, userId: string) {
+  const ext = file.name.split(".").pop() || "jpg";
+  const fileName = `${userId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage.from("housing-images").upload(fileName, file, {
+    upsert: true,
+  });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("housing-images").getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+export default function RoommateNewPage() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [budget, setBudget] = useState<string>("");
+  const [budget, setBudget] = useState(""); // maps to DB budget (integer)
   const [location, setLocation] = useState("");
   const [contact, setContact] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
 
-    const t = title.trim();
-    const d = description.trim();
+    if (!title.trim()) return setErr("Please add a title.");
+    if (!description.trim()) return setErr("Please describe what you’re looking for.");
 
-    if (!t) return setErr("Please add a title.");
-    if (!d) return setErr("Please add a short description.");
+    // budget is optional — but if provided it must be numeric
+    if (budget.trim() && Number.isNaN(Number(budget))) return setErr("Budget must be a number.");
 
     setLoading(true);
 
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
 
-    if (userErr || !user) {
+      const user = authData.user;
+      if (!user) {
+        setLoading(false);
+        return setErr("You must be signed in to post.");
+      }
+
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadHousingImage(imageFile, user.id);
+      }
+
+      const { error: insertErr } = await supabase.from("housing_posts").insert({
+        user_id: user.id,
+        post_type: "roommate",
+        title: title.trim(),
+        description: description.trim(),
+        budget: budget.trim() ? Number(budget) : null,
+        location: location.trim() || null,
+        contact: contact.trim() || null,
+        image_url: imageUrl,
+      });
+
+      if (insertErr) throw insertErr;
+
+      router.push("/housing");
+      router.refresh();
+    } catch (e: any) {
+      setErr(e?.message ?? "Something went wrong.");
       setLoading(false);
-      return setErr("You must be signed in.");
     }
-
-    const b = budget.trim() ? Number(budget) : null;
-    if (budget.trim() && Number.isNaN(b)) {
-      setLoading(false);
-      return setErr("Budget must be a number.");
-    }
-
-    const { error: insertErr } = await supabase.from("housing_posts").insert({
-      user_id: user.id,
-      post_type: "roommate",
-      title: t,
-      description: d,
-      budget: b,
-      location: location.trim() || null,
-      contact: contact.trim() || null,
-    });
-
-    if (insertErr) {
-      setLoading(false);
-      return setErr(insertErr.message);
-    }
-
-    setLoading(false);
-    router.push("/housing");
   };
 
   return (
@@ -78,73 +94,82 @@ export default function NewRoommatePostPage() {
         <Link className="btn btnSoft" href="/housing">
           Back to Housing
         </Link>
+     
       </div>
 
-      <form onSubmit={submit} className="card cardPad" style={{ marginTop: 16 }}>
-        <label style={{ fontWeight: 900 }}>Title</label>
-        <input
-          className="input"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Fall 2026 roommate"
-          style={{ marginTop: 6 }}
-        />
-
-        <div style={{ marginTop: 14 }}>
-          <label style={{ fontWeight: 900 }}>About you / what you want</label>
-          <textarea
-            className="textarea"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Share what you're looking for, lifestyle, sleep schedule, etc."
-            rows={7}
-            style={{ marginTop: 6 }}
+      <form onSubmit={onSubmit} className="card cardPad" style={{ marginTop: 16 }}>
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Title</label>
+          <input
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: Fall 2026 roommate"
           />
         </div>
 
-        <div className="grid2" style={{ marginTop: 14 }}>
-          <div>
-            <label style={{ fontWeight: 900 }}>Budget (per semester or month)</label>
-            <input
-              className="input"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="Ex: 600"
-              style={{ marginTop: 6 }}
-              inputMode="numeric"
-            />
-          </div>
-
-          <div>
-            <label style={{ fontWeight: 900 }}>Location (optional)</label>
-            <input
-              className="input"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ex: The Hill, Commons, Off-campus"
-              style={{ marginTop: 6 }}
-            />
-          </div>
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">About you / what you want</label>
+          <textarea
+            className="input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Share what you're looking for, lifestyle, sleep schedule, etc."
+            style={{ minHeight: 140 }}
+          />
         </div>
 
-        <div style={{ marginTop: 14 }}>
-          <label style={{ fontWeight: 900 }}>Contact (optional)</label>
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Budget (per semester or month) (optional)</label>
+          <input
+            className="input"
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+            placeholder="Ex: 600"
+            inputMode="numeric"
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Location (optional)</label>
+          <input
+            className="input"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Ex: The Hill, Commons, Off-campus"
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Contact (optional)</label>
           <input
             className="input"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             placeholder="Ex: Text 555-123-4567 or IG @username"
-            style={{ marginTop: 6 }}
           />
-          <div className="subtle" style={{ marginTop: 8 }}>
+          <div className="subtle" style={{ marginTop: 6 }}>
             Only share what you’re comfortable with.
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label className="label">Photo (optional)</label>
+          <input
+            className="input"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          />
+          <div className="subtle" style={{ marginTop: 6 }}>
+            A clear face photo works best (optional).
           </div>
         </div>
 
         {err && (
           <div
             style={{
-              marginTop: 14,
+              marginTop: 10,
               padding: 12,
               borderRadius: 12,
               border: "1px solid rgba(239,68,68,.25)",
@@ -157,11 +182,10 @@ export default function NewRoommatePostPage() {
           </div>
         )}
 
-        <div className="row" style={{ justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+        <div className="row" style={{ marginTop: 14, justifyContent: "flex-end", gap: 12 }}>
           <Link className="btn btnSoft" href="/housing">
             Cancel
           </Link>
-
           <button className="btn btnPrimary" type="submit" disabled={loading}>
             {loading ? "Posting..." : "Post Roommate"}
           </button>
