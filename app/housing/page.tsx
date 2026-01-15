@@ -9,261 +9,185 @@ type HousingPost = {
   id: string;
   created_at: string;
   user_id: string;
-
-  post_type: "roommate" | "sublease";
+  post_type: "roommate" | "sublease" | string;
   title: string;
   description: string | null;
-
-  grad_year: number | null;
-  new_to_campus: boolean | null;
-
-  budget_min: number | null;
-  budget_max: number | null;
-
-  move_in_date: string | null;
+  price: number | null;
   location: string | null;
-
-  contact_method: string | null;
-  contact_value: string | null;
+  image_url: string | null;
 };
 
+function formatDate(d: string) {
+  try {
+    return new Date(d).toLocaleDateString();
+  } catch {
+    return d;
+  }
+}
+
 export default function HousingPage() {
-  const [sessionReady, setSessionReady] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [activeTab, setActiveTab] = useState<"roommate" | "sublease">("roommate");
 
-  const [activeType, setActiveType] = useState<"roommate" | "sublease">("roommate");
-  const [gradYear, setGradYear] = useState<string>("");
-  const [newToCampusOnly, setNewToCampusOnly] = useState(false);
-
-  const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<HousingPost[]>([]);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
-  const years = useMemo(() => {
-    const y = new Date().getFullYear();
-    return Array.from({ length: 7 }, (_, i) => y + i);
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    setErr(null);
 
-  useEffect(() => {
-    let mounted = true;
+    const { data, error } = await supabase
+      .from("housing_posts")
+      .select("id,created_at,user_id,post_type,title,description,price,location,image_url")
+      .order("created_at", { ascending: false });
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setIsAuthed(!!data.session);
-      setSessionReady(true);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      if (!mounted) return;
-      setIsAuthed(!!session);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      if (!isAuthed) {
-        setPosts([]);
-        setErrorMsg(null);
-        return;
-      }
-
-      setLoading(true);
-      setErrorMsg(null);
-
-      let q = supabase
-        .from("housing_posts")
-        .select("*")
-        .eq("post_type", activeType)
-        .order("created_at", { ascending: false });
-
-      if (gradYear) q = q.eq("grad_year", Number(gradYear));
-      if (newToCampusOnly) q = q.eq("new_to_campus", true);
-
-      const { data, error } = await q;
-
-      if (!mounted) return;
-
-      if (error) {
-        setErrorMsg(error.message);
-        setPosts([]);
-      } else {
-        setPosts((data ?? []) as HousingPost[]);
-      }
-
+    if (error) {
+      setErr(error.message);
+      setPosts([]);
       setLoading(false);
+      return;
     }
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [isAuthed, activeType, gradYear, newToCampusOnly]);
-
-  const pill = (active: boolean) => ({
-    padding: "10px 14px",
-    borderRadius: 999,
-    border: "1px solid #e5e7eb",
-    background: active ? "#111111" : "#ffffff",
-    color: active ? "#ffffff" : "#111111",
-    fontWeight: 900 as const,
-    cursor: "pointer",
-  });
-
-  const card: React.CSSProperties = {
-    border: "1px solid #e5e7eb",
-    borderRadius: 14,
-    padding: 14,
-    background: "#ffffff",
+    setPosts((data as HousingPost[]) ?? []);
+    setLoading(false);
   };
 
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    return posts.filter((p) => p.post_type === activeTab);
+  }, [posts, activeTab]);
+
+  const postHref = activeTab === "roommate" ? "/housing/roommates/new" : "/housing/new";
+  const postLabel = activeTab === "roommate" ? "Post Roommate" : "Post Sublease";
+
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", padding: 24 }}>
+    <div className="container">
       <PrimaryTabs />
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>
-          <h1 style={{ fontSize: 30, fontWeight: 900, margin: 0 }}>Housing</h1>
-          <p style={{ marginTop: 6, color: "#4b5563", fontWeight: 600 }}>
-            Find roommates or post a sublease.
-          </p>
+          <h1 className="h1">Housing</h1>
+          <p className="subtle">Find roommates or post a sublease.</p>
         </div>
 
-        <Link
-          href="/housing/new"
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            background: "#111111",
-            color: "#ffffff",
-            textDecoration: "none",
-            fontWeight: 900,
-            height: "fit-content",
-          }}
-        >
-          Post in Housing
-        </Link>
+        <div className="row" style={{ gap: 10 }}>
+          <button className="btn btnSoft" onClick={load} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+          <Link className="btn btnPrimary" href={postHref}>
+            {postLabel}
+          </Link>
+        </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-        <button style={pill(activeType === "roommate")} onClick={() => setActiveType("roommate")}>
+      {/* Tabs */}
+      <div className="row" style={{ gap: 10, marginTop: 16 }}>
+        <button
+          className={activeTab === "roommate" ? "btn btnPrimary" : "btn btnSoft"}
+          onClick={() => setActiveTab("roommate")}
+          type="button"
+        >
           Find Roommates
         </button>
-        <button style={pill(activeType === "sublease")} onClick={() => setActiveType("sublease")}>
+
+        <button
+          className={activeTab === "sublease" ? "btn btnPrimary" : "btn btnSoft"}
+          onClick={() => setActiveTab("sublease")}
+          type="button"
+        >
           Subleases
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 14,
-          padding: 14,
-          border: "1px solid #e5e7eb",
-          borderRadius: 14,
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
-          background: "#fafafa",
-        }}
-      >
-        <div style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontWeight: 900 }}>Grad year</span>
-          <select
-            value={gradYear}
-            onChange={(e) => setGradYear(e.target.value)}
-            style={{ padding: 10, borderRadius: 10, border: "1px solid #e5e7eb" }}
-          >
-            <option value="">All</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+      {err && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(239,68,68,.25)",
+            background: "rgba(239,68,68,.08)",
+            color: "#7a1f1f",
+            fontWeight: 800,
+          }}
+        >
+          {err}
         </div>
+      )}
 
-        <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 22 }}>
-          <input
-            type="checkbox"
-            checked={newToCampusOnly}
-            onChange={(e) => setNewToCampusOnly(e.target.checked)}
-          />
-          <span style={{ fontWeight: 900 }}>New to campus only</span>
-        </label>
-      </div>
-
-      {sessionReady && !isAuthed ? (
-        <div style={{ marginTop: 16, ...card }}>
-          <b>You must be logged in to view Housing posts.</b>
-          <div style={{ marginTop: 6, color: "#4b5563" }}>
-            Go to <Link href="/login">/login</Link>, sign in, then come back here.
+      {/* List */}
+      <div style={{ marginTop: 16 }}>
+        {loading ? (
+          <div className="card cardPad">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="card cardPad">
+            <div style={{ fontWeight: 950, fontSize: 18 }}>
+              No {activeTab === "roommate" ? "roommate" : "sublease"} posts yet
+            </div>
+            <div className="subtle">Be the first to post.</div>
           </div>
-        </div>
-      ) : null}
-
-      {isAuthed ? (
-        <div style={{ marginTop: 16 }}>
-          {loading ? (
-            <div style={card}>
-              <b>Loading…</b>
-            </div>
-          ) : errorMsg ? (
-            <div style={{ ...card, background: "#fee2e2" }}>
-              <b>Error:</b> {errorMsg}
-            </div>
-          ) : posts.length === 0 ? (
-            <div style={card}>
-              <b>No posts match your filters yet.</b>
-              <div style={{ marginTop: 6, color: "#4b5563" }}>
-                Try switching tabs, clearing filters, or post the first one.
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              {posts.map((p) => (
-                <div key={p.id} style={card}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900 }}>{p.title}</div>
-                    <div style={{ color: "#6b7280", fontWeight: 800 }}>
-                      {new Date(p.created_at).toLocaleDateString()}
-                    </div>
+        ) : (
+          <div style={{ display: "grid", gap: 14 }}>
+            {filtered.map((p) => (
+              <div key={p.id} className="card cardPad">
+                <div className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 18 }}>{p.title}</div>
+                  <div className="subtle" style={{ fontWeight: 800 }}>
+                    {formatDate(p.created_at)}
                   </div>
+                </div>
 
-                  {p.description ? (
-                    <div style={{ marginTop: 8, lineHeight: 1.45 }}>{p.description}</div>
+                {p.image_url && activeTab === "sublease" ? (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      height: 240,
+                      background: "#f8fafc",
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      border: "1px solid rgba(15,23,42,.10)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.image_url}
+                      alt={p.title}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                {p.description ? (
+                  <div style={{ marginTop: 10, lineHeight: 1.5 }}>{p.description}</div>
+                ) : null}
+
+                <div className="row" style={{ gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                  {p.location ? <span className="badge">Location: {p.location}</span> : null}
+
+                  {activeTab === "sublease" && p.price != null ? (
+                    <span className="badge">Rent: ${p.price}/mo</span>
                   ) : null}
 
-                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", color: "#374151", fontWeight: 800 }}>
-                    {p.grad_year ? <span>Grad: {p.grad_year}</span> : null}
-                    {p.new_to_campus ? <span>New to campus</span> : null}
-                    {p.location ? <span>Location: {p.location}</span> : null}
-                    {p.move_in_date ? <span>Move-in: {p.move_in_date}</span> : null}
-                    {p.budget_min || p.budget_max ? (
-                      <span>
-                        Budget: {p.budget_min ?? "?"}–{p.budget_max ?? "?"}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {p.contact_method || p.contact_value ? (
-                    <div style={{ marginTop: 10, padding: 10, borderRadius: 12, background: "#f3f4f6" }}>
-                      <b>Contact:</b> {p.contact_method ?? "message"}
-                      {p.contact_value ? ` — ${p.contact_value}` : ""}
-                    </div>
+                  {activeTab === "roommate" && p.price != null ? (
+                    <span className="badge">Budget: ${p.price}</span>
                   ) : null}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
