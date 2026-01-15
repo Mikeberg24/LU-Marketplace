@@ -43,6 +43,7 @@ export default function RoommateNewPage() {
         post_type: "roommate",
         title: title.trim(),
         description: `${description.trim()}\n\nContact: ${contact.trim() || "N/A"}`,
+        contact: contact.trim() || null,
         location: location.trim() || null,
         price: Number(budget), // using price as budget for now (safe, since price exists)
         user_id: user.id,

@@ -12,6 +12,7 @@ type HousingPost = {
   post_type: "roommate" | "sublease" | string;
   title: string;
   description: string | null;
+  contact: string | null;
 };
 
 function formatDate(d: string) {
@@ -35,7 +36,7 @@ export default function HousingPage() {
 
     const { data, error } = await supabase
       .from("housing_posts")
-      .select("id,created_at,user_id,post_type,title,description")
+      .select("id,created_at,user_id,post_type,title,description,contact")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -147,6 +148,38 @@ export default function HousingPage() {
                     No description provided.
                   </div>
                 )}
+
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "rgba(2,6,23,.04)",
+                    border: "1px solid rgba(15,23,42,.10)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ fontWeight: 900 }}>
+                    Contact:{" "}
+                    <span style={{ fontWeight: 800 }}>
+                      {p.contact ? p.contact : "Not provided"}
+                    </span>
+                  </div>
+
+                  {p.contact ? (
+                    <button
+                      className="btn btnSoft"
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(p.contact!)}
+                    >
+                      Copy
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
