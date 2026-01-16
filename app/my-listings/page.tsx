@@ -97,12 +97,9 @@ export default function MyListingsPage() {
   };
 
   useEffect(() => {
-    load();
-    // keep it updated when login changes
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => sub.subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  load();
+}, []);
+
 
   const deleteMarketplace = async (id: string) => {
     if (!confirm("Delete this marketplace listing?")) return;
