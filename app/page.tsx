@@ -25,7 +25,6 @@ export default function HomePage() {
 
     setLoading(true);
     try {
-      // Magic link / OTP
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
@@ -38,7 +37,7 @@ export default function HomePage() {
 
       setStatus({
         type: "ok",
-        msg: "Check your email for a secure sign-in link. You’ll be verified in seconds.",
+        msg: "Check your inbox for a secure sign-in link. You’ll be verified in seconds.",
       });
       setEmail("");
     } catch (err: any) {
@@ -53,30 +52,27 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: "calc(100vh - 40px)" }}>
-      {/* HERO */}
       <section
         className="card"
         style={{
-          marginTop: 18,
+          marginTop: 16,
           padding: 0,
           overflow: "hidden",
           border: "1px solid rgba(15,23,42,.10)",
         }}
       >
+        {/* Mobile-first wrapper: stack; on wide screens become 2 columns */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.2fr .8fr",
-            gap: 18,
-            padding: 26,
-            alignItems: "center",
+            gridTemplateColumns: "1fr",
+            gap: 14,
+            padding: 18,
           }}
         >
-          {/* Left */}
+          {/* LEFT */}
           <div>
-            {/* Brand Row */}
             <div className="row" style={{ gap: 12, alignItems: "center", marginBottom: 12 }}>
-              {/* Clean flame mark */}
               <div
                 aria-hidden
                 style={{
@@ -86,7 +82,7 @@ export default function HomePage() {
                   border: "1px solid rgba(15,23,42,.12)",
                   display: "grid",
                   placeItems: "center",
-                  background: "linear-gradient(180deg, rgba(255,106,0,.16), rgba(255,106,0,.02))",
+                  background: "linear-gradient(180deg, rgba(255,106,0,.18), rgba(255,106,0,.03))",
                 }}
               >
                 <span style={{ fontSize: 22, lineHeight: "22px" }}>🔥</span>
@@ -106,32 +102,29 @@ export default function HomePage() {
               className="h1"
               style={{
                 margin: 0,
-                fontSize: 56,
-                lineHeight: 1.02,
-                letterSpacing: -1.2,
+                fontSize: 40,
+                lineHeight: 1.06,
+                letterSpacing: -0.8,
               }}
             >
               A verified exchange for Liberty students.
             </h1>
 
-            <p
-              className="subtle"
-              style={{
-                marginTop: 12,
-                fontSize: 18,
-                maxWidth: 640,
-              }}
-            >
-              Buy and sell with confidence, find housing faster, and keep spam out. Access is tied to
-              email verification to protect the community.
+            <p className="subtle" style={{ marginTop: 12, fontSize: 16, maxWidth: 680 }}>
+              Buy and sell with confidence, find housing faster, and keep spam out. Posting and
+              messaging require email verification to protect the community.
             </p>
 
-            {/* CTAs */}
-            <div className="row" style={{ gap: 12, marginTop: 18, flexWrap: "wrap" }}>
+            <div className="row" style={{ gap: 12, marginTop: 16, flexWrap: "wrap" }}>
               <Link
                 href="/marketplace"
                 className="btn btnPrimary"
-                style={{ padding: "12px 18px", fontWeight: 950 }}
+                style={{
+                  padding: "12px 18px",
+                  fontWeight: 950,
+                  flex: "1 1 220px",
+                  justifyContent: "center",
+                }}
               >
                 Browse Marketplace
               </Link>
@@ -143,24 +136,22 @@ export default function HomePage() {
                   padding: "12px 18px",
                   fontWeight: 950,
                   border: "1px solid rgba(15,23,42,.18)",
+                  flex: "1 1 220px",
+                  justifyContent: "center",
                 }}
               >
                 Browse Housing
               </Link>
             </div>
-
-            <div className="subtle" style={{ marginTop: 10 }}>
-              Posting and messaging require email verification to keep listings legit.
-            </div>
           </div>
 
-          {/* Right: Verify card */}
+          {/* RIGHT (Verify) */}
           <div
             className="card"
             style={{
-              padding: 18,
+              padding: 16,
               border: "1px solid rgba(15,23,42,.10)",
-              background: "rgba(255,255,255,.7)",
+              background: "rgba(255,255,255,.75)",
             }}
           >
             <div style={{ fontWeight: 950, fontSize: 18 }}>Get verified</div>
@@ -168,7 +159,7 @@ export default function HomePage() {
               Enter your Liberty email. We’ll send a secure sign-in link.
             </div>
 
-            <form onSubmit={onVerify} style={{ marginTop: 14 }}>
+            <form onSubmit={onVerify} style={{ marginTop: 12 }}>
               <div style={{ fontWeight: 900, marginBottom: 6 }}>Email</div>
               <input
                 className="input"
@@ -176,13 +167,19 @@ export default function HomePage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@liberty.edu"
                 autoComplete="email"
+                style={{ width: "100%" }}
               />
 
               <button
                 type="submit"
                 className="btn btnPrimary"
                 disabled={loading}
-                style={{ width: "100%", marginTop: 12, padding: "12px 14px", fontWeight: 950 }}
+                style={{
+                  width: "100%",
+                  marginTop: 12,
+                  padding: "12px 14px",
+                  fontWeight: 950,
+                }}
               >
                 {loading ? "Sending..." : "Verify Email"}
               </button>
@@ -199,6 +196,7 @@ export default function HomePage() {
                     status.type === "ok" ? "rgba(34,197,94,.08)" : "rgba(239,68,68,.08)",
                   color: status.type === "ok" ? "#14532d" : "#7a1f1f",
                   fontWeight: 900,
+                  wordBreak: "break-word",
                 }}
               >
                 {status.msg}
@@ -211,7 +209,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Bottom accent stripe (clean, not “ember”) */}
+        {/* Wider screens: switch to 2 columns */}
+        <style jsx>{`
+          @media (min-width: 980px) {
+            section > div:first-child {
+              grid-template-columns: 1.2fr 0.8fr !important;
+              gap: 18px !important;
+              padding: 26px !important;
+              align-items: center !important;
+            }
+            h1.h1 {
+              font-size: 56px !important;
+              letter-spacing: -1.2px !important;
+              line-height: 1.02 !important;
+            }
+          }
+        `}</style>
+
+        {/* Accent stripe */}
         <div
           aria-hidden
           style={{
@@ -222,25 +237,24 @@ export default function HomePage() {
         />
       </section>
 
-      {/* FOOTER */}
+      {/* Footer (more subtle) */}
       <div
         className="subtle"
         style={{
-          marginTop: 18,
+          marginTop: 16,
           paddingBottom: 22,
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
+          display: "grid",
+          gap: 6,
         }}
       >
         <div style={{ fontWeight: 900 }}>
-          Have questions? Concerns? <span style={{ fontWeight: 700 }}>Michael Berg</span> •{" "}
+          Have questions? Concerns?{" "}
+          <span style={{ fontWeight: 700 }}>Contact the developer:</span>{" "}
+          <span style={{ fontWeight: 900 }}>Michael Berg</span> •{" "}
           <a href="mailto:mberg11@liberty.edu" style={{ fontWeight: 900 }}>
             mberg11@liberty.edu
           </a>
         </div>
-
         <div style={{ opacity: 0.8 }}>Flames Exchange • LU Marketplace</div>
       </div>
     </div>
