@@ -93,7 +93,7 @@ export default function HomePage() {
                   Flames Exchange
                 </div>
                 <div className="subtle" style={{ marginTop: 2 }}>
-                  LU Marketplace • Marketplace + Housing
+                  LU Marketplace + Housing Browser
                 </div>
               </div>
             </div>
@@ -108,7 +108,8 @@ export default function HomePage() {
                   lineHeight: 1.2,
                 }}
               >
-                the one-stop shop to buy, sell, and search for roommates and subleases - all through students!
+                One-stop shop to buy, sell & search for roommates/subleases.
+                verify your Liberty email to get started!
               </div>
               <div className="subtle" style={{ marginTop: 8, fontSize: 15 }}>
                 Viewing is open. Email verification keeps listings legit and helps reduce spam.
