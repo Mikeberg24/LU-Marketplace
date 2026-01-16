@@ -108,7 +108,7 @@ export default function HomePage() {
                   lineHeight: 1.2,
                 }}
               >
-                Browse freely. Verify to post and message.
+                the one-stop shop to buy, sell, and search for roommates and subleases - all through students!
               </div>
               <div className="subtle" style={{ marginTop: 8, fontSize: 15 }}>
                 Viewing is open. Email verification keeps listings legit and helps reduce spam.
