@@ -61,7 +61,6 @@ export default function HomePage() {
           border: "1px solid rgba(15,23,42,.10)",
         }}
       >
-        {/* Mobile-first wrapper: stack; on wide screens become 2 columns */}
         <div
           style={{
             display: "grid",
@@ -72,6 +71,7 @@ export default function HomePage() {
         >
           {/* LEFT */}
           <div>
+            {/* Brand */}
             <div className="row" style={{ gap: 12, alignItems: "center", marginBottom: 12 }}>
               <div
                 aria-hidden
@@ -98,23 +98,24 @@ export default function HomePage() {
               </div>
             </div>
 
-            <h1
-              className="h1"
-              style={{
-                margin: 0,
-                fontSize: 40,
-                lineHeight: 1.06,
-                letterSpacing: -0.8,
-              }}
-            >
-              A verified exchange for Liberty students.
-            </h1>
+            {/* Consolidated message */}
+            <div style={{ maxWidth: 720 }}>
+              <div
+                style={{
+                  fontWeight: 950,
+                  fontSize: 22,
+                  letterSpacing: -0.3,
+                  lineHeight: 1.2,
+                }}
+              >
+                Browse freely. Verify to post and message.
+              </div>
+              <div className="subtle" style={{ marginTop: 8, fontSize: 15 }}>
+                Viewing is open. Email verification keeps listings legit and helps reduce spam.
+              </div>
+            </div>
 
-            <p className="subtle" style={{ marginTop: 12, fontSize: 16, maxWidth: 680 }}>
-              Buy and sell with confidence, find housing faster, and keep spam out. Posting and
-              messaging require email verification to protect the community.
-            </p>
-
+            {/* CTAs */}
             <div className="row" style={{ gap: 12, marginTop: 16, flexWrap: "wrap" }}>
               <Link
                 href="/marketplace"
@@ -143,6 +144,27 @@ export default function HomePage() {
                 Browse Housing
               </Link>
             </div>
+
+            {/* Clear warning line (short) */}
+            <div
+              className="subtle"
+              style={{
+                marginTop: 10,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(15,23,42,.10)",
+                background: "rgba(15,23,42,.03)",
+                maxWidth: "fit-content",
+              }}
+            >
+              <span aria-hidden style={{ fontSize: 14 }}>✅</span>
+              <span>
+                To <b>post</b> or <b>message</b>, verify your Liberty email.
+              </span>
+            </div>
           </div>
 
           {/* RIGHT (Verify) */}
@@ -154,9 +176,9 @@ export default function HomePage() {
               background: "rgba(255,255,255,.75)",
             }}
           >
-            <div style={{ fontWeight: 950, fontSize: 18 }}>Get verified</div>
+            <div style={{ fontWeight: 950, fontSize: 18 }}>Verify your email</div>
             <div className="subtle" style={{ marginTop: 6 }}>
-              Enter your Liberty email. We’ll send a secure sign-in link.
+              We’ll send a secure sign-in link to your inbox.
             </div>
 
             <form onSubmit={onVerify} style={{ marginTop: 12 }}>
@@ -181,7 +203,7 @@ export default function HomePage() {
                   fontWeight: 950,
                 }}
               >
-                {loading ? "Sending..." : "Verify Email"}
+                {loading ? "Sending..." : "Send Verification Link"}
               </button>
             </form>
 
@@ -218,11 +240,6 @@ export default function HomePage() {
               padding: 26px !important;
               align-items: center !important;
             }
-            h1.h1 {
-              font-size: 56px !important;
-              letter-spacing: -1.2px !important;
-              line-height: 1.02 !important;
-            }
           }
         `}</style>
 
@@ -237,7 +254,7 @@ export default function HomePage() {
         />
       </section>
 
-      {/* Footer (more subtle) */}
+      {/* Footer (subtle) */}
       <div
         className="subtle"
         style={{
