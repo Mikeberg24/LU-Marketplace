@@ -1,34 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+
+type Status = null | { type: "ok" | "err"; msg: string };
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] =
-    useState<null | { type: "ok" | "err"; msg: string }>(null);
+  const [status, setStatus] = useState<Status>(null);
+
+  const trimmed = useMemo(() => email.trim().toLowerCase(), [email]);
+  const looksValid = useMemo(() => trimmed.includes("@") && trimmed.includes("."), [trimmed]);
 
   async function onVerify(e: React.FormEvent) {
     e.preventDefault();
     setStatus(null);
 
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !trimmed.includes("@")) {
+    if (!looksValid) {
       setStatus({ type: "err", msg: "Enter a valid email address." });
       return;
     }
 
     setLoading(true);
     try {
+      // Magic link / OTP
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
           emailRedirectTo:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
+            typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
         },
       });
 
@@ -36,13 +38,13 @@ export default function HomePage() {
 
       setStatus({
         type: "ok",
-        msg: "Check your email for a verification link to finish signing in.",
+        msg: "Check your email for a secure sign-in link. You’ll be verified in seconds.",
       });
       setEmail("");
     } catch (err: any) {
       setStatus({
         type: "err",
-        msg: err?.message || "Something went wrong — try again.",
+        msg: err?.message || "Could not send verification email. Try again.",
       });
     } finally {
       setLoading(false);
@@ -50,286 +52,197 @@ export default function HomePage() {
   }
 
   return (
-    <main style={s.page}>
-      {/* Subtle brand glow */}
-      <div style={s.bg} aria-hidden />
-
-      {/* Header */}
-      <header style={s.header}>
-        <div style={s.brand}>
-          {/* NEW LOGO MARK */}
-          <div style={s.logo}>
-            <span style={s.logoFlame} />
-          </div>
-
+    <div style={{ minHeight: "calc(100vh - 40px)" }}>
+      {/* HERO */}
+      <section
+        className="card"
+        style={{
+          marginTop: 18,
+          padding: 0,
+          overflow: "hidden",
+          border: "1px solid rgba(15,23,42,.10)",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.2fr .8fr",
+            gap: 18,
+            padding: 26,
+            alignItems: "center",
+          }}
+        >
+          {/* Left */}
           <div>
-            <div style={s.brandName}>Flames Exchange</div>
-            <div style={s.brandSub}>LU Marketplace</div>
-          </div>
-        </div>
-
-        <nav style={s.nav}>
-          <Link href="/marketplace" style={s.navLink}>Marketplace</Link>
-          <Link href="/housing" style={s.navLink}>Housing</Link>
-          <Link href="/sell" style={s.navLink}>Post</Link>
-        </nav>
-      </header>
-
-      {/* Hero */}
-      <section style={s.hero}>
-        <div>
-          <h1 style={s.h1}>Flames Exchange</h1>
-
-          <h2 style={s.subhead}>
-            Liberty’s verified marketplace for students
-          </h2>
-
-          <p style={s.lead}>
-            Buy, sell, and find housing in one place. Flames Exchange is built
-            to stay clean, trusted, and focused on real student listings.
-          </p>
-
-          <div style={s.ctaRow}>
-            <Link href="/marketplace" style={s.ctaPrimary}>
-              Browse Marketplace
-            </Link>
-
-            <Link href="/housing" style={s.ctaSecondary}>
-              Browse Housing
-            </Link>
-          </div>
-
-          <p style={s.note}>
-            Posting and messaging require email verification to keep listings legitimate.
-          </p>
-        </div>
-
-        {/* Verification */}
-        <aside style={s.card}>
-          <div style={s.cardTitle}>Get verified</div>
-          <div style={s.cardSub}>
-            Verify your email to post listings, message users, and access housing.
-          </div>
-
-          <form onSubmit={onVerify} style={s.form}>
-            <label style={s.label}>Email</label>
-            <input
-              type="email"
-              placeholder="you@liberty.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={s.input}
-            />
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ ...s.verifyBtn, opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? "Sending…" : "Verify Email"}
-            </button>
-
-            {status && (
+            {/* Brand Row */}
+            <div className="row" style={{ gap: 12, alignItems: "center", marginBottom: 12 }}>
+              {/* Clean flame mark */}
               <div
+                aria-hidden
                 style={{
-                  ...s.status,
-                  borderColor:
-                    status.type === "ok"
-                      ? "rgba(16,185,129,.35)"
-                      : "rgba(239,68,68,.35)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  border: "1px solid rgba(15,23,42,.12)",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "linear-gradient(180deg, rgba(255,106,0,.16), rgba(255,106,0,.02))",
+                }}
+              >
+                <span style={{ fontSize: 22, lineHeight: "22px" }}>🔥</span>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 18, letterSpacing: -0.2 }}>
+                  Flames Exchange
+                </div>
+                <div className="subtle" style={{ marginTop: 2 }}>
+                  LU Marketplace • Marketplace + Housing
+                </div>
+              </div>
+            </div>
+
+            <h1
+              className="h1"
+              style={{
+                margin: 0,
+                fontSize: 56,
+                lineHeight: 1.02,
+                letterSpacing: -1.2,
+              }}
+            >
+              A verified exchange for Liberty students.
+            </h1>
+
+            <p
+              className="subtle"
+              style={{
+                marginTop: 12,
+                fontSize: 18,
+                maxWidth: 640,
+              }}
+            >
+              Buy and sell with confidence, find housing faster, and keep spam out. Access is tied to
+              email verification to protect the community.
+            </p>
+
+            {/* CTAs */}
+            <div className="row" style={{ gap: 12, marginTop: 18, flexWrap: "wrap" }}>
+              <Link
+                href="/marketplace"
+                className="btn btnPrimary"
+                style={{ padding: "12px 18px", fontWeight: 950 }}
+              >
+                Browse Marketplace
+              </Link>
+
+              <Link
+                href="/housing"
+                className="btn btnSoft"
+                style={{
+                  padding: "12px 18px",
+                  fontWeight: 950,
+                  border: "1px solid rgba(15,23,42,.18)",
+                }}
+              >
+                Browse Housing
+              </Link>
+            </div>
+
+            <div className="subtle" style={{ marginTop: 10 }}>
+              Posting and messaging require email verification to keep listings legit.
+            </div>
+          </div>
+
+          {/* Right: Verify card */}
+          <div
+            className="card"
+            style={{
+              padding: 18,
+              border: "1px solid rgba(15,23,42,.10)",
+              background: "rgba(255,255,255,.7)",
+            }}
+          >
+            <div style={{ fontWeight: 950, fontSize: 18 }}>Get verified</div>
+            <div className="subtle" style={{ marginTop: 6 }}>
+              Enter your Liberty email. We’ll send a secure sign-in link.
+            </div>
+
+            <form onSubmit={onVerify} style={{ marginTop: 14 }}>
+              <div style={{ fontWeight: 900, marginBottom: 6 }}>Email</div>
+              <input
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@liberty.edu"
+                autoComplete="email"
+              />
+
+              <button
+                type="submit"
+                className="btn btnPrimary"
+                disabled={loading}
+                style={{ width: "100%", marginTop: 12, padding: "12px 14px", fontWeight: 950 }}
+              >
+                {loading ? "Sending..." : "Verify Email"}
+              </button>
+            </form>
+
+            {status ? (
+              <div
+                className="card"
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  border: "1px solid rgba(15,23,42,.12)",
+                  background:
+                    status.type === "ok" ? "rgba(34,197,94,.08)" : "rgba(239,68,68,.08)",
+                  color: status.type === "ok" ? "#14532d" : "#7a1f1f",
+                  fontWeight: 900,
                 }}
               >
                 {status.msg}
               </div>
-            )}
+            ) : null}
 
-            <div style={s.privacy}>
+            <div className="subtle" style={{ marginTop: 10 }}>
               No spam. No sharing. Used only for verification.
             </div>
-          </form>
-        </aside>
-      </section>
-
-      {/* Reason (replaces ugly cards) */}
-      <section style={s.reason}>
-        <h3 style={s.reasonTitle}>Why Flames Exchange exists</h3>
-        <p style={s.reasonText}>
-          Campus marketplaces fall apart when nobody is accountable.
-          Flames Exchange stays useful by verifying users and keeping
-          the experience focused on real students and real listings —
-          especially for housing.
-        </p>
-      </section>
-
-      <footer style={s.footer}>
-        <div>© {new Date().getFullYear()} Flames Exchange</div>
-        <div style={s.footerLinks}>
-          <Link href="/marketplace" style={s.footerLink}>Marketplace</Link>
-          <Link href="/housing" style={s.footerLink}>Housing</Link>
+          </div>
         </div>
-      </footer>
-    </main>
+
+        {/* Bottom accent stripe (clean, not “ember”) */}
+        <div
+          aria-hidden
+          style={{
+            height: 8,
+            background:
+              "linear-gradient(90deg, rgba(255,106,0,.95), rgba(255,106,0,.30), rgba(15,23,42,.08))",
+          }}
+        />
+      </section>
+
+      {/* FOOTER */}
+      <div
+        className="subtle"
+        style={{
+          marginTop: 18,
+          paddingBottom: 22,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontWeight: 900 }}>
+          Have questions? Concerns? <span style={{ fontWeight: 700 }}>Michael Berg</span> •{" "}
+          <a href="mailto:mberg11@liberty.edu" style={{ fontWeight: 900 }}>
+            mberg11@liberty.edu
+          </a>
+        </div>
+
+        <div style={{ opacity: 0.8 }}>Flames Exchange • LU Marketplace</div>
+      </div>
+    </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  page: {
-    position: "relative",
-    minHeight: "100vh",
-    maxWidth: 1120,
-    margin: "0 auto",
-    padding: "40px 24px 32px",
-  },
-
-  bg: {
-    position: "absolute",
-    inset: 0,
-    zIndex: 0,
-    background:
-      "radial-gradient(600px 600px at -120px 280px, rgba(255,88,24,.12), transparent 70%), radial-gradient(600px 600px at calc(100% + 120px) 120px, rgba(255,140,48,.10), transparent 70%)",
-  },
-
-  header: {
-    position: "relative",
-    zIndex: 1,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 28,
-    borderBottom: "1px solid rgba(0,0,0,.08)",
-  },
-
-  brand: { display: "flex", gap: 14, alignItems: "center" },
-
-  /* NEW LOGO */
-  logo: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    background: "rgba(0,0,0,.92)",
-    position: "relative",
-    boxShadow: "0 10px 30px rgba(0,0,0,.15)",
-  },
-  logoFlame: {
-    position: "absolute",
-    inset: 6,
-    borderRadius: 10,
-    background:
-      "radial-gradient(circle at 35% 35%, rgba(255,120,40,.9), rgba(255,60,0,.65) 60%, rgba(0,0,0,.9) 61%)",
-  },
-
-  brandName: {
-    fontWeight: 950,
-    letterSpacing: "-0.03em",
-    textTransform: "uppercase",
-  },
-  brandSub: { fontSize: 12, opacity: 0.7 },
-
-  nav: { display: "flex", gap: 18 },
-  navLink: { textDecoration: "none", fontSize: 14, opacity: 0.85 },
-
-  hero: {
-    position: "relative",
-    zIndex: 1,
-    display: "grid",
-    gridTemplateColumns: "1.1fr 0.9fr",
-    gap: 56,
-    paddingTop: 56,
-    paddingBottom: 64,
-  },
-
-  h1: {
-    fontSize: 56,
-    fontWeight: 950,
-    letterSpacing: "-0.05em",
-    marginBottom: 10,
-  },
-  subhead: {
-    fontSize: 18,
-    fontWeight: 800,
-    opacity: 0.8,
-    marginBottom: 18,
-  },
-  lead: {
-    fontSize: 17,
-    lineHeight: 1.7,
-    opacity: 0.85,
-    maxWidth: 620,
-    marginBottom: 32,
-  },
-
-  ctaRow: { display: "flex", gap: 16, marginBottom: 24 },
-  ctaPrimary: {
-    padding: "14px 22px",
-    borderRadius: 14,
-    background: "rgba(0,0,0,.92)",
-    color: "white",
-    fontWeight: 900,
-    textDecoration: "none",
-  },
-  ctaSecondary: {
-    padding: "14px 22px",
-    borderRadius: 14,
-    border: "2px solid rgba(0,0,0,.9)",
-    fontWeight: 900,
-    textDecoration: "none",
-    color: "rgba(0,0,0,.9)",
-  },
-
-  note: { fontSize: 13, opacity: 0.7 },
-
-  card: {
-    border: "1px solid rgba(0,0,0,.12)",
-    borderRadius: 18,
-    padding: 22,
-    background: "rgba(255,255,255,.9)",
-  },
-
-  cardTitle: { fontWeight: 900, marginBottom: 6 },
-  cardSub: { fontSize: 13, opacity: 0.75, marginBottom: 18 },
-
-  form: { display: "flex", flexDirection: "column", gap: 12 },
-  label: { fontSize: 12, fontWeight: 800 },
-  input: {
-    padding: "12px",
-    borderRadius: 10,
-    border: "1px solid rgba(0,0,0,.18)",
-  },
-
-  verifyBtn: {
-    padding: "12px",
-    borderRadius: 10,
-    background: "rgba(0,0,0,.9)",
-    color: "white",
-    fontWeight: 800,
-  },
-
-  status: {
-    padding: "10px",
-    borderRadius: 10,
-    border: "1px solid",
-    fontSize: 13,
-  },
-
-  privacy: { fontSize: 12, opacity: 0.65 },
-
-  reason: {
-    paddingTop: 48,
-    paddingBottom: 48,
-    maxWidth: 720,
-  },
-  reasonTitle: { fontWeight: 900, marginBottom: 8 },
-  reasonText: { lineHeight: 1.7, opacity: 0.82 },
-
-  footer: {
-    marginTop: 64,
-    paddingTop: 28,
-    borderTop: "1px solid rgba(0,0,0,.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 13,
-    opacity: 0.8,
-  },
-  footerLinks: { display: "flex", gap: 16 },
-  footerLink: { textDecoration: "none", opacity: 0.8 },
-};
