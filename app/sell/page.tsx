@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -16,6 +16,29 @@ const CATEGORIES = [
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 const LOCATIONS = ["On-campus", "Off-campus", "Meetup", "Online Transfer"];
+
+function isHeicFile(file: File) {
+  const name = file.name.toLowerCase();
+  const type = (file.type || "").toLowerCase();
+  return (
+    type.includes("heic") ||
+    type.includes("heif") ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif")
+  );
+}
+
+function isAllowedImage(file: File) {
+  const type = (file.type || "").toLowerCase();
+  // Some browsers may leave type empty; fall back to extension
+  const name = file.name.toLowerCase();
+  const ext = name.split(".").pop() || "";
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  const allowedExts = ["jpg", "jpeg", "png", "webp"];
+
+  return allowedTypes.includes(type) || allowedExts.includes(ext);
+}
 
 export default function SellPage() {
   const router = useRouter();
@@ -34,6 +57,7 @@ export default function SellPage() {
   const [contactPhone, setContactPhone] = useState("");
 
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -55,6 +79,33 @@ export default function SellPage() {
     run();
   }, [router]);
 
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null);
+
+    const f = e.target.files?.[0] || null;
+    if (!f) {
+      setImageFile(null);
+      return;
+    }
+
+    // Block HEIC/HEIF (phone uploads) because desktop browsers often can't render them
+    if (isHeicFile(f)) {
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      setErrorMsg("HEIC photos aren’t supported yet. Please upload a JPG, PNG, or WebP.");
+      return;
+    }
+
+    if (!isAllowedImage(f)) {
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      setErrorMsg("Please upload a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    setImageFile(f);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -74,55 +125,68 @@ export default function SellPage() {
 
     setSubmitting(true);
 
-    let image_url: string | null = null;
-    let image_path: string | null = null;
+    try {
+      let image_url: string | null = null;
+      let image_path: string | null = null;
 
-    if (imageFile) {
-      const ext = (imageFile.name.split(".").pop() || "jpg").toLowerCase();
-      const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
-      const filePath = `${userId}/${crypto.randomUUID()}.${safeExt}`;
+      if (imageFile) {
+        // Extra safety: prevent HEIC even if a browser bypasses accept filters
+        if (isHeicFile(imageFile) || !isAllowedImage(imageFile)) {
+          throw new Error("Unsupported image format. Please use JPG, PNG, or WebP.");
+        }
 
-      const { error: uploadError } = await supabase.storage
-        .from("listing-images")
-        .upload(filePath, imageFile, { cacheControl: "3600", upsert: false });
+        const name = imageFile.name.toLowerCase();
+        const ext = name.split(".").pop() || "jpg";
+        const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
 
-      if (uploadError) {
-        setSubmitting(false);
-        return setErrorMsg(uploadError.message);
+        const filePath = `${userId}/${crypto.randomUUID()}.${safeExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("listing-images")
+          .upload(filePath, imageFile, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: imageFile.type || undefined,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from("listing-images")
+          .getPublicUrl(filePath);
+
+        image_url = publicData.publicUrl;
+        image_path = filePath;
       }
 
-      const { data: publicData } = supabase.storage
-        .from("listing-images")
-        .getPublicUrl(filePath);
+      const { error: insertError } = await supabase.from("listings").insert({
+        user_id: userId,
+        title: cleanTitle,
+        price: numericPrice,
+        category,
+        condition,
+        location,
+        course_code: courseCode.trim() || null,
+        description: description.trim() || null,
+        contact_email: cleanEmail,
+        contact_phone: contactPhone.trim() || null,
+        image_url,
+        image_path,
+        views: 0,
+      });
 
-      image_url = publicData.publicUrl;
-      image_path = filePath;
-    }
+      if (insertError) throw insertError;
 
-    const { error: insertError } = await supabase.from("listings").insert({
-      user_id: userId,
-      title: cleanTitle,
-      price: numericPrice,
-      category,
-      condition,
-      location,
-      course_code: courseCode.trim() || null,
-      description: description.trim() || null,
-      contact_email: cleanEmail,
-      contact_phone: contactPhone.trim() || null,
-      image_url,
-      image_path,
-      views: 0,
-    });
+      // Clear file input so users can re-select the same file next time
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
 
-    if (insertError) {
+      router.push("/my-listings");
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Something went wrong. Please try again.");
+    } finally {
       setSubmitting(false);
-      return setErrorMsg(insertError.message);
     }
-
-    setSubmitting(false);
-    router.push("/my-listings");
-    router.refresh?.();
   };
 
   return (
@@ -175,7 +239,9 @@ export default function SellPage() {
             <div style={{ fontWeight: 950, marginBottom: 6 }}>Category</div>
             <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -184,7 +250,9 @@ export default function SellPage() {
             <div style={{ fontWeight: 950, marginBottom: 6 }}>Condition</div>
             <select className="select" value={condition} onChange={(e) => setCondition(e.target.value)}>
               {CONDITIONS.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -193,7 +261,9 @@ export default function SellPage() {
             <div style={{ fontWeight: 950, marginBottom: 6 }}>Pickup</div>
             <select className="select" value={location} onChange={(e) => setLocation(e.target.value)}>
               {LOCATIONS.map((l) => (
-                <option key={l} value={l}>{l}</option>
+                <option key={l} value={l}>
+                  {l}
+                </option>
               ))}
             </select>
           </div>
@@ -225,11 +295,7 @@ export default function SellPage() {
         <div className="gridCards" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div>
             <div style={{ fontWeight: 950, marginBottom: 6 }}>Contact Email</div>
-            <input
-              className="input"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-            />
+            <input className="input" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
           </div>
 
           <div>
@@ -245,9 +311,14 @@ export default function SellPage() {
 
         <div style={{ marginTop: 14 }}>
           <div style={{ fontWeight: 950, marginBottom: 6 }}>Photo (optional)</div>
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={onPickFile}
+          />
           <div className="subtle" style={{ marginTop: 6 }}>
-            Clear photos help your listing sell faster.
+            Use JPG/PNG/WebP. (HEIC from iPhones isn’t supported on all laptops yet.)
           </div>
         </div>
 
