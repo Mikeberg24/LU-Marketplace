@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import PrimaryTabs from "@/components/PrimaryTabs";
 import { supabase } from "@/lib/supabaseClient";
 
 async function uploadHousingImage(file: File, userId: string) {
@@ -83,7 +82,7 @@ export default function RoommateNewPage() {
 
   return (
     <div className="container">
-      <PrimaryTabs />
+     
 
       <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>

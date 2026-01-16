@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import PrimaryTabs from "@/components/PrimaryTabs";
 import { supabase } from "@/lib/supabaseClient";
 
 type HousingPost = {
@@ -71,7 +70,7 @@ export default function HousingPage() {
 
   return (
     <div className="container">
-      <PrimaryTabs />
+     
 
       {/* Header */}
       <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>

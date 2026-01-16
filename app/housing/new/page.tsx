@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import PrimaryTabs from "@/components/PrimaryTabs";
 
 async function uploadHousingImage(file: File, userId: string) {
   const ext = file.name.split(".").pop() || "jpg";
@@ -80,7 +79,7 @@ export default function HousingNewPage() {
 
   return (
     <div className="container">
-      <PrimaryTabs />
+      
 
       <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>

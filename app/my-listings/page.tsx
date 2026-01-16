@@ -5,282 +5,343 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-
-type Listing = {
+type MarketplaceListing = {
   id: string;
-  title: string;
-  price: number;
-  category: string;
   created_at: string;
+  user_id: string;
+  title: string;
+  price: number | null;
+  description: string | null;
   image_url: string | null;
-  image_path: string | null;
-  views: number | null;
 };
 
-function formatDate(dt: string) {
+type HousingPost = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  post_type: "roommate" | "sublease" | string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  contact: string | null;
+  image_url: string | null;
+  budget: number | null;
+  rent: number | null;
+};
+
+function formatDate(d: string) {
   try {
-    return new Date(dt).toLocaleString();
+    return new Date(d).toLocaleDateString();
   } catch {
-    return dt;
+    return d;
   }
 }
 
 export default function MyListingsPage() {
   const router = useRouter();
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"marketplace" | "housing">("marketplace");
 
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  const [marketplace, setMarketplace] = useState<MarketplaceListing[]>([]);
+  const [housing, setHousing] = useState<HousingPost[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const [q, setQ] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const load = async (uid: string) => {
+  const load = async () => {
     setLoading(true);
     setErr(null);
 
-    const { data, error } = await supabase
-      .from("listings")
-      .select("id,title,price,category,created_at,image_url,image_path,views")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false });
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
 
-    if (error) {
-      setErr(error.message);
-      setListings([]);
+      const user = authData.user;
+      if (!user) {
+        setUserId(null);
+        setMarketplace([]);
+        setHousing([]);
+        setLoading(false);
+        return;
+      }
+
+      setUserId(user.id);
+
+      // Load marketplace listings
+      const { data: mData, error: mErr } = await supabase
+        .from("listings")
+        .select("id,created_at,user_id,title,price,description,image_url")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (mErr) throw mErr;
+
+      // Load housing posts
+      const { data: hData, error: hErr } = await supabase
+        .from("housing_posts")
+        .select("id,created_at,user_id,post_type,title,description,location,contact,image_url,budget,rent")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (hErr) throw hErr;
+
+      setMarketplace(Array.isArray(mData) ? (mData as MarketplaceListing[]) : []);
+      setHousing(Array.isArray(hData) ? (hData as HousingPost[]) : []);
       setLoading(false);
-      return;
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to load.");
+      setLoading(false);
     }
-
-    setListings((data as Listing[]) ?? []);
-    setLoading(false);
   };
 
   useEffect(() => {
-    const run = async () => {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id ?? null;
+    load();
+    // keep it updated when login changes
+    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
+    return () => sub.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      if (!uid) {
-        router.replace("/login");
-        return;
-      }
-
-      setUserId(uid);
-      setEmail(data.user?.email ?? null);
-      await load(uid);
-    };
-
-    run();
-  }, [router]);
-
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return listings;
-
-    return listings.filter((l) => {
-      const hay = `${l.title} ${l.category}`.toLowerCase();
-      return hay.includes(query);
-    });
-  }, [listings, q]);
-
-  const deleteListing = async (id: string) => {
-    const ok = confirm("Delete this listing? This also deletes the photo.");
-    if (!ok) return;
-
-    setDeletingId(id);
-    setErr(null);
-
-    // 1) get image_path
-    const { data: row, error: fetchErr } = await supabase
-      .from("listings")
-      .select("image_path")
-      .eq("id", id)
-      .single();
-
-    if (fetchErr) {
-      setDeletingId(null);
-      setErr(fetchErr.message);
-      return;
+  const deleteMarketplace = async (id: string) => {
+    if (!confirm("Delete this marketplace listing?")) return;
+    try {
+      const { error } = await supabase.from("listings").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to delete.");
     }
-
-    const imagePath = (row?.image_path as string | null) ?? null;
-
-    // 2) remove from storage if we have a path
-    if (imagePath) {
-      const { error: removeErr } = await supabase.storage
-        .from("listing-images")
-        .remove([imagePath]);
-
-      if (removeErr) {
-        setDeletingId(null);
-        setErr(removeErr.message);
-        return;
-      }
-    }
-
-    // 3) delete row
-    const { error: delErr } = await supabase.from("listings").delete().eq("id", id);
-
-    if (delErr) {
-      setDeletingId(null);
-      setErr(delErr.message);
-      return;
-    }
-
-    setListings((prev) => prev.filter((l) => l.id !== id));
-    setDeletingId(null);
   };
 
+  const deleteHousing = async (id: string) => {
+    if (!confirm("Delete this housing post?")) return;
+    try {
+      const { error } = await supabase.from("housing_posts").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to delete.");
+    }
+  };
+
+  const activeCount = useMemo(() => {
+    return activeTab === "marketplace" ? marketplace.length : housing.length;
+  }, [activeTab, marketplace.length, housing.length]);
+
   return (
-    <div className="container">
-      <div className="row" style={{ justifyContent: "space-between", gap: 16 }}>
+    <div>
+      {/* Header row */}
+      <div className="row" style={{ justifyContent: "space-between", gap: 16, marginTop: 16 }}>
         <div>
           <h1 className="h1">My Listings</h1>
-          <p className="subtle">
-            {email ? `Signed in as ${email}` : "Manage what you’ve posted."}
-          </p>
+          <p className="subtle">Manage what you’ve posted (marketplace + housing).</p>
         </div>
 
-        <div className="row">
-          <Link className="btn btnPrimary" href="/sell">
-            Post a Listing
-          </Link>
-          <button
-            className="btn btnSoft"
-            onClick={() => userId && load(userId)}
-            disabled={loading}
-          >
+        <div className="row" style={{ gap: 10 }}>
+          <button className="btn btnSoft" onClick={load} disabled={loading} type="button">
             {loading ? "Refreshing..." : "Refresh"}
+          </button>
+
+          <button
+            className="btn btnPrimary"
+            type="button"
+            onClick={() => router.push(activeTab === "marketplace" ? "/sell" : "/housing")}
+          >
+            {activeTab === "marketplace" ? "Post Item" : "Go to Housing"}
           </button>
         </div>
       </div>
 
-      <div className="card cardPad" style={{ marginTop: 16 }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <input
-            className="input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search your listings…"
-            style={{ maxWidth: 420 }}
-          />
-          <span className="badge">
-            {filtered.length} listing{filtered.length === 1 ? "" : "s"}
-          </span>
-        </div>
+      {/* Tabs */}
+      <div className="row" style={{ gap: 10, marginTop: 16 }}>
+        <button
+          type="button"
+          className={activeTab === "marketplace" ? "btn btnPrimary" : "btn btnSoft"}
+          onClick={() => setActiveTab("marketplace")}
+        >
+          Marketplace ({marketplace.length})
+        </button>
 
-        {err ? (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid rgba(239,68,68,.25)",
-              background: "rgba(239,68,68,.08)",
-              color: "#7a1f1f",
-              fontWeight: 900,
-            }}
-          >
-            {err}
-          </div>
-        ) : null}
+        <button
+          type="button"
+          className={activeTab === "housing" ? "btn btnPrimary" : "btn btnSoft"}
+          onClick={() => setActiveTab("housing")}
+        >
+          Housing ({housing.length})
+        </button>
       </div>
 
+      {/* Sign in state */}
+      {!userId && !loading && (
+        <div className="card cardPad" style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Sign in to see your listings</div>
+          <div className="subtle" style={{ marginTop: 6 }}>
+            You need to be signed in to manage your posts.
+          </div>
+          <div className="row" style={{ marginTop: 12, gap: 10 }}>
+            <Link className="btn btnPrimary" href="/login">
+              Sign in
+            </Link>
+            <Link className="btn btnSoft" href="/marketplace">
+              Back to Browse
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {err && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(239,68,68,.25)",
+            background: "rgba(239,68,68,.08)",
+            color: "#7a1f1f",
+            fontWeight: 800,
+          }}
+        >
+          {err}
+        </div>
+      )}
+
+      {/* List */}
       <div style={{ marginTop: 16 }}>
         {loading ? (
           <div className="card cardPad">Loading…</div>
-        ) : filtered.length === 0 ? (
+        ) : userId && activeCount === 0 ? (
           <div className="card cardPad">
-            <div style={{ fontWeight: 950, fontSize: 18 }}>No listings yet</div>
-            <div className="subtle">Post your first one to get started.</div>
-            <div style={{ marginTop: 12 }}>
-              <Link className="btn btnPrimary" href="/sell">
-                Post a Listing
-              </Link>
+            <div style={{ fontWeight: 950, fontSize: 18 }}>
+              No {activeTab === "marketplace" ? "marketplace" : "housing"} listings yet
             </div>
+            <div className="subtle">Post one and it’ll show up here.</div>
+          </div>
+        ) : activeTab === "marketplace" ? (
+          <div style={{ display: "grid", gap: 14 }}>
+            {marketplace.map((l) => (
+              <div key={l.id} className="card cardPad">
+                <div className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 18 }}>{l.title}</div>
+                  <div className="subtle" style={{ fontWeight: 800 }}>
+                    {formatDate(l.created_at)}
+                  </div>
+                </div>
+
+                {l.image_url ? (
+                  <img
+                    src={l.image_url}
+                    alt={l.title}
+                    style={{ width: "100%", maxWidth: 360, marginTop: 12, borderRadius: 14, objectFit: "cover" }}
+                  />
+                ) : null}
+
+                <div style={{ marginTop: 10, fontWeight: 900 }}>
+                  Price: <span style={{ fontWeight: 800 }}>{l.price ?? "—"}</span>
+                </div>
+
+                {l.description ? (
+                  <div style={{ marginTop: 8, lineHeight: 1.5 }}>{l.description}</div>
+                ) : (
+                  <div className="subtle" style={{ marginTop: 8 }}>
+                    No description.
+                  </div>
+                )}
+
+                <div className="row" style={{ marginTop: 14, gap: 10, justifyContent: "flex-end" }}>
+                  <Link className="btn btnSoft" href={`/edit-listing/${l.id}`}>
+                    Edit
+                  </Link>
+                  <button className="btn btnSoft" type="button" onClick={() => deleteMarketplace(l.id)}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="gridCards">
-            {filtered.map((l) => (
-              <div key={l.id} className="card" style={{ overflow: "hidden" }}>
-                <Link
-                  href={`/listing/${l.id}`}
-                  style={{ textDecoration: "none", display: "block" }}
-                >
-                  <div
-                    style={{
-                      height: 150,
-                      background:
-                        "linear-gradient(135deg, rgba(2,6,23,.06), rgba(2,6,23,.02))",
-                      borderBottom: "1px solid rgba(15,23,42,.10)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-                    }}
-                  >
-                    {l.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={l.image_url}
-                        alt={l.title}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <div style={{ color: "rgba(91,101,119,.9)", fontWeight: 950 }}>
-                        No photo
-                      </div>
-                    )}
+          <div style={{ display: "grid", gap: 14 }}>
+            {housing.map((p) => (
+              <div key={p.id} className="card cardPad">
+                <div className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 950, fontSize: 18 }}>
+                    {p.title}{" "}
+                    <span className="subtle" style={{ fontWeight: 900 }}>
+                      ({p.post_type})
+                    </span>
+                  </div>
+                  <div className="subtle" style={{ fontWeight: 800 }}>
+                    {formatDate(p.created_at)}
+                  </div>
+                </div>
 
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 12,
-                        right: 12,
-                        background: "rgba(255,255,255,.92)",
-                        border: "1px solid rgba(15,23,42,.10)",
-                        borderRadius: 999,
-                        padding: "6px 10px",
-                        fontWeight: 950,
-                        boxShadow: "0 6px 18px rgba(2,6,23,.08)",
-                      }}
-                    >
-                      ${Number(l.price).toFixed(0)}
+                {p.image_url ? (
+                  <img
+                    src={p.image_url}
+                    alt={p.title}
+                    style={{ width: "100%", maxWidth: 360, marginTop: 12, borderRadius: 14, objectFit: "cover" }}
+                  />
+                ) : null}
+
+                {/* Budget / Rent */}
+                <div className="row" style={{ gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+                  {p.post_type === "roommate" ? (
+                    <div style={{ fontWeight: 900 }}>
+                      Budget: <span style={{ fontWeight: 800 }}>{p.budget ?? "—"}</span>
                     </div>
+                  ) : (
+                    <div style={{ fontWeight: 900 }}>
+                      Rent: <span style={{ fontWeight: 800 }}>{p.rent ?? "—"}</span>
+                    </div>
+                  )}
+
+                  <div style={{ fontWeight: 900 }}>
+                    Location: <span style={{ fontWeight: 800 }}>{p.location ?? "—"}</span>
                   </div>
-                </Link>
+                </div>
 
-                <div className="cardPad">
-                  <div style={{ fontWeight: 950, fontSize: 18 }}>{l.title}</div>
-                  <div className="subtle" style={{ fontWeight: 800, marginTop: 6 }}>
-                    {l.category} • {formatDate(l.created_at)}
+                {p.description ? (
+                  <div style={{ marginTop: 10, lineHeight: 1.5 }}>{p.description}</div>
+                ) : (
+                  <div className="subtle" style={{ marginTop: 10 }}>
+                    No description.
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "rgba(2,6,23,.04)",
+                    border: "1px solid rgba(15,23,42,.10)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ fontWeight: 900 }}>
+                    Contact: <span style={{ fontWeight: 800 }}>{p.contact ?? "—"}</span>
                   </div>
 
-                  <div className="row" style={{ marginTop: 10 }}>
-                    <span className="badge">Views: {l.views ?? 0}</span>
-                  </div>
-
-                  <div className="row" style={{ marginTop: 14, justifyContent: "space-between" }}>
-                    <Link className="btn btnSoft" href={`/edit-listing/${l.id}`}>
-                      Edit
-                    </Link>
-
-                    <button
-                      className="btn"
-                      onClick={() => deleteListing(l.id)}
-                      disabled={deletingId === l.id}
-                      style={{
-                        background: "rgba(239,68,68,.08)",
-                        borderColor: "rgba(239,68,68,.25)",
-                      }}
-                    >
-                      {deletingId === l.id ? "Deleting..." : "Delete"}
+                  {p.contact ? (
+                    <button className="btn btnSoft" type="button" onClick={() => navigator.clipboard.writeText(p.contact!)}>
+                      Copy
                     </button>
-                  </div>
+                  ) : null}
+                </div>
+
+                <div className="row" style={{ marginTop: 14, gap: 10, justifyContent: "flex-end" }}>
+                  <Link className="btn btnSoft" href={`/housing/edit/${p.id}`}>
+                    Edit
+                  </Link>
+                  <button className="btn btnSoft" type="button" onClick={() => deleteHousing(p.id)}>
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
