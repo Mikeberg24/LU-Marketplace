@@ -50,17 +50,16 @@ export default function HomePage() {
 
   return (
     <main style={s.page}>
-      {/* Background flames (decor) */}
-      <div style={s.bg} aria-hidden>
-        <Flame style={s.flameLeft} />
-        <Flame style={s.flameRight} />
-        <div style={s.noise} />
-      </div>
+      {/* Subtle flame accents (clean, not cartoony) */}
+      <div style={s.bg} aria-hidden />
 
-      {/* Top bar */}
+      {/* Header */}
       <header style={s.header}>
         <div style={s.brand}>
-          <div style={s.mark} aria-hidden />
+          <div style={s.logo} aria-hidden>
+            <span style={s.logoInner} />
+          </div>
+
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={s.brandName}>Flames Exchange</div>
             <div style={s.brandSub}>
@@ -88,54 +87,53 @@ export default function HomePage() {
           <div style={s.kicker}>Verified • Student-only • Built for Liberty</div>
 
           <h1 style={s.h1}>
-            Flames Exchange.
-            <br />
-            <span style={s.h1Muted}>The LU marketplace that doesn’t feel sketchy.</span>
+            Flames Exchange
+            <span style={s.h1Light}> — the LU marketplace for listings and housing.</span>
           </h1>
 
           <p style={s.lead}>
-            A tougher, cleaner marketplace for students — with real listings, real people, and less noise.
-            Housing and buy/sell in one place.
+            A clean, verified place to buy/sell and find housing without spam. Built to keep things legit.
           </p>
 
+          {/* Primary CTAs (same style, more stand-out) */}
           <div style={s.ctaRow}>
-            <Link href="/marketplace" className="btn btnPrimary" style={s.ctaPrimary}>
+            <Link href="/marketplace" style={s.ctaBtn}>
               Browse Marketplace
+              <span style={s.ctaArrow} aria-hidden>
+                →
+              </span>
             </Link>
-            <Link href="/housing" className="btn btnSoft" style={s.ctaSecondary}>
-              Explore Housing
+
+            <Link href="/housing" style={s.ctaBtn}>
+              Browse Housing
+              <span style={s.ctaArrow} aria-hidden>
+                →
+              </span>
             </Link>
           </div>
 
-          <div style={s.proofRow}>
-            <div style={s.proofItem}>
-              <div style={s.proofTop}>Email-verified</div>
-              <div style={s.proofBottom}>Fewer fake listings</div>
+          <div style={s.miniProof}>
+            <div style={s.miniItem}>
+              <div style={s.miniTop}>Email verified</div>
+              <div style={s.miniBottom}>Accountability for listings + housing</div>
             </div>
-            <div style={s.proofItem}>
-              <div style={s.proofTop}>Student-first</div>
-              <div style={s.proofBottom}>Built for campus life</div>
+            <div style={s.miniItem}>
+              <div style={s.miniTop}>Simple by design</div>
+              <div style={s.miniBottom}>Fast navigation, less noise</div>
             </div>
-            <div style={s.proofItem}>
-              <div style={s.proofTop}>Housing-ready</div>
-              <div style={s.proofBottom}>Sublets + roommates</div>
-            </div>
-          </div>
-
-          <div style={s.note}>
-            Posting and messaging require verification — it keeps Flames Exchange trusted and spam-free.
           </div>
         </div>
 
-        {/* Verification */}
-        <aside style={s.panel}>
-          <div style={s.panelTop}>
-            <div style={s.panelTitle}>Get verified</div>
-            <div style={s.panelBadge}>Secure</div>
-          </div>
-
-          <div style={s.panelSub}>
-            Enter your email to verify your account and unlock posting + messaging.
+        {/* Verification card */}
+        <aside style={s.card}>
+          <div style={s.cardTop}>
+            <div>
+              <div style={s.cardTitle}>Get verified</div>
+              <div style={s.cardSub}>
+                Verify your email to post, message, and keep the exchange trusted.
+              </div>
+            </div>
+            <div style={s.badge}>SECURE</div>
           </div>
 
           <form onSubmit={onVerify} style={s.form}>
@@ -156,11 +154,10 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="btn btnPrimary"
               disabled={loading}
               style={{
                 ...s.verifyBtn,
-                opacity: loading ? 0.85 : 1,
+                opacity: loading ? 0.86 : 1,
                 cursor: loading ? "not-allowed" : "pointer",
               }}
             >
@@ -181,42 +178,33 @@ export default function HomePage() {
               </div>
             )}
 
-            <div style={s.privacy}>No spam. No sharing. Used only for verification and safety.</div>
-          </form>
-
-          <div style={s.panelRule} />
-
-          <div style={s.panelWhy}>
-            <div style={s.panelWhyTitle}>Why verification?</div>
-            <div style={s.panelWhyText}>
-              It reduces scams, filters spam, and makes messaging safer — especially for housing.
+            <div style={s.privacy}>
+              No spam. No sharing. Used only for verification and essential account updates.
             </div>
-          </div>
+          </form>
         </aside>
       </section>
 
-      {/* Why section (tough / editorial) */}
-      <section style={s.why}>
-        <h2 style={s.h2}>Built for trust</h2>
-        <p style={s.whyP}>
-          Flames Exchange is simple on purpose: verified accounts, clean navigation, and listings that feel
-          legit. No clutter, no weirdness.
+      {/* Bottom section */}
+      <section style={s.section}>
+        <h2 style={s.h2}>Why verification exists</h2>
+        <p style={s.p}>
+          Housing and buy/sell only work when people are real. Email verification helps reduce fake posts,
+          spam, and sketchy messages — so the marketplace has a backbone.
         </p>
 
-        <div style={s.rule} />
-
-        <div style={s.bullets}>
-          <div style={s.bullet}>
-            <div style={s.bulletTitle}>Fewer scams</div>
-            <div style={s.bulletBody}>Verified accounts reduce impersonation and fake posts.</div>
+        <div style={s.features}>
+          <div style={s.feature}>
+            <div style={s.featureTitle}>Less spam</div>
+            <div style={s.featureBody}>Verified accounts cut down low-effort and fake postings.</div>
           </div>
-          <div style={s.bullet}>
-            <div style={s.bulletTitle}>Less noise</div>
-            <div style={s.bulletBody}>Spam drops when users are tied to a real email.</div>
+          <div style={s.feature}>
+            <div style={s.featureTitle}>More trust</div>
+            <div style={s.featureBody}>Better replies when users know listings come from real people.</div>
           </div>
-          <div style={s.bullet}>
-            <div style={s.bulletTitle}>Better housing</div>
-            <div style={s.bulletBody}>Roommates, sublets, and leases need accountability.</div>
+          <div style={s.feature}>
+            <div style={s.featureTitle}>Safer housing</div>
+            <div style={s.featureBody}>Roommates and sublets require accountability.</div>
           </div>
         </div>
       </section>
@@ -239,45 +227,6 @@ export default function HomePage() {
   );
 }
 
-function Flame({ style }: { style: React.CSSProperties }) {
-  // Simple flame SVG (decorative)
-  return (
-    <svg
-      viewBox="0 0 120 240"
-      width="120"
-      height="240"
-      style={style}
-      role="presentation"
-      focusable="false"
-    >
-      <path
-        d="M60 10
-           C78 40, 95 58, 92 92
-           C90 120, 70 130, 72 160
-           C74 190, 98 200, 90 225
-           C82 250, 62 255, 60 255
-           C58 255, 38 250, 30 225
-           C22 200, 46 190, 48 160
-           C50 130, 30 120, 28 92
-           C25 58, 42 40, 60 10Z"
-        fill="rgba(255, 95, 31, 0.14)"
-      />
-      <path
-        d="M60 55
-           C70 75, 80 88, 78 108
-           C76 124, 64 132, 66 150
-           C68 170, 82 176, 78 194
-           C74 210, 62 214, 60 214
-           C58 214, 46 210, 42 194
-           C38 176, 52 170, 54 150
-           C56 132, 44 124, 42 108
-           C40 88, 50 75, 60 55Z"
-        fill="rgba(255, 170, 65, 0.14)"
-      />
-    </svg>
-  );
-}
-
 const s: Record<string, React.CSSProperties> = {
   page: {
     position: "relative",
@@ -288,38 +237,19 @@ const s: Record<string, React.CSSProperties> = {
     overflow: "hidden",
   },
 
-  // Background layer
+  // Subtle flame accents as gradients (clean + professional)
   bg: {
     position: "absolute",
     inset: 0,
-    pointerEvents: "none",
     zIndex: 0,
-  },
-  flameLeft: {
-    position: "absolute",
-    left: -30,
-    top: 120,
-    transform: "rotate(-10deg)",
-    filter: "blur(0.2px)",
-    opacity: 0.95,
-  },
-  flameRight: {
-    position: "absolute",
-    right: -40,
-    top: 40,
-    transform: "rotate(12deg) scaleX(-1)",
-    filter: "blur(0.2px)",
-    opacity: 0.95,
-  },
-  noise: {
-    position: "absolute",
-    inset: 0,
-    background:
-      "repeating-linear-gradient(0deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02) 1px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 4px)",
-    opacity: 0.35,
+    pointerEvents: "none",
+    background: `
+      radial-gradient(520px 520px at -90px 260px, rgba(255, 88, 24, 0.18) 0%, rgba(255, 88, 24, 0.06) 42%, rgba(255, 88, 24, 0.00) 70%),
+      radial-gradient(480px 480px at calc(100% + 70px) 120px, rgba(255, 140, 48, 0.16) 0%, rgba(255, 140, 48, 0.05) 42%, rgba(255, 140, 48, 0.00) 70%),
+      radial-gradient(900px 520px at 50% -260px, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.00) 70%)
+    `,
   },
 
-  // Content above bg
   header: {
     position: "relative",
     zIndex: 1,
@@ -332,24 +262,44 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   brand: { display: "flex", alignItems: "center", gap: 12 },
-  mark: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    background: "rgba(0,0,0,.92)",
-    boxShadow: "0 0 0 4px rgba(255,95,31,.12)",
+
+  // Clean “LU / flame” mark (not cartoony): small, sharp, premium
+  logo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    border: "1px solid rgba(0,0,0,.12)",
+    background:
+      "radial-gradient(12px 12px at 28% 30%, rgba(255,88,24,.35) 0%, rgba(255,88,24,.10) 55%, rgba(255,88,24,0) 70%), rgba(255,255,255,.85)",
+    boxShadow: "0 10px 24px rgba(0,0,0,.06)",
+    position: "relative",
+    overflow: "hidden",
   },
-  brandName: { fontWeight: 950, letterSpacing: "-0.03em", textTransform: "uppercase" },
-  brandSub: { fontSize: 12, opacity: 0.7, marginTop: 2 },
-  dot: { opacity: 0.6, margin: "0 6px" },
+  logoInner: {
+    position: "absolute",
+    inset: 0,
+    background:
+      "linear-gradient(135deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.88) 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,0) 100%)",
+    opacity: 0.10,
+  },
+
+  brandName: {
+    fontWeight: 950,
+    letterSpacing: "-0.03em",
+    textTransform: "uppercase",
+    lineHeight: 1.05,
+  },
+  brandSub: { fontSize: 12, opacity: 0.72, marginTop: 2 },
+  dot: { opacity: 0.55, margin: "0 6px" },
 
   nav: { display: "flex", gap: 14, flexWrap: "wrap" },
   navLink: {
     textDecoration: "none",
     fontSize: 14,
     opacity: 0.86,
-    borderBottom: "1px solid rgba(0,0,0,0)",
-    paddingBottom: 2,
+    padding: "6px 8px",
+    borderRadius: 8,
+    border: "1px solid rgba(0,0,0,0)",
   },
 
   hero: {
@@ -364,136 +314,164 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   left: { paddingRight: 10 },
+
   kicker: {
     display: "inline-flex",
-    gap: 8,
     alignItems: "center",
+    gap: 10,
     fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: "0.08em",
+    fontWeight: 850,
+    letterSpacing: "0.10em",
     textTransform: "uppercase",
-    opacity: 0.72,
+    opacity: 0.70,
     marginBottom: 10,
   },
+
   h1: {
     fontSize: 46,
-    lineHeight: 1.03,
+    lineHeight: 1.06,
     letterSpacing: "-0.04em",
     margin: "0 0 12px 0",
   },
-  h1Muted: {
-    display: "inline-block",
-    opacity: 0.72,
+  h1Light: {
+    opacity: 0.70,
     fontWeight: 750,
   },
+
   lead: {
     fontSize: 16,
     lineHeight: 1.65,
     opacity: 0.82,
     margin: "0 0 18px 0",
-    maxWidth: 640,
+    maxWidth: 660,
   },
 
-  ctaRow: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
-  ctaPrimary: { padding: "10px 14px", borderRadius: 6 },
-  ctaSecondary: { padding: "10px 14px", borderRadius: 6 },
-
-  proofRow: {
+  // CTAs: same style, bold, clean, matched
+  ctaRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    maxWidth: 620,
+    marginTop: 8,
+  },
+  ctaBtn: {
+    textDecoration: "none",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
-    marginTop: 16,
-    maxWidth: 700,
-  },
-  proofItem: {
-    padding: 10,
-    borderRadius: 10,
-    background: "rgba(255,255,255,.85)",
-    border: "1px solid rgba(0,0,0,.08)",
-    backdropFilter: "blur(2px)",
-  },
-  proofTop: { fontWeight: 950, letterSpacing: "-0.01em" },
-  proofBottom: { marginTop: 4, fontSize: 13, opacity: 0.72, lineHeight: 1.35 },
-
-  note: { marginTop: 12, fontSize: 13, opacity: 0.72, maxWidth: 640 },
-
-  panel: {
-    border: "1px solid rgba(0,0,0,.14)",
+    padding: "14px 14px",
     borderRadius: 12,
-    padding: 16,
-    background: "rgba(0,0,0,.02)",
-    boxShadow: "0 10px 30px rgba(0,0,0,.06)",
-  },
-  panelTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  panelTitle: {
-    fontWeight: 950,
-    letterSpacing: "-0.02em",
-    fontSize: 16,
-    textTransform: "uppercase",
-  },
-  panelBadge: {
-    fontSize: 11,
+    border: "1px solid rgba(0,0,0,.14)",
+    background: "rgba(255,255,255,.90)",
+    boxShadow: "0 16px 36px rgba(0,0,0,.08)",
     fontWeight: 900,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    padding: "6px 8px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,95,31,.30)",
-    background: "rgba(255,95,31,.10)",
-    opacity: 0.95,
+    letterSpacing: "-0.01em",
   },
-  panelSub: { marginTop: 8, fontSize: 13, opacity: 0.78, lineHeight: 1.5 },
+  ctaArrow: { opacity: 0.75, fontWeight: 900 },
+
+  miniProof: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginTop: 16,
+    maxWidth: 620,
+  },
+  miniItem: {
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,.10)",
+    background: "rgba(255,255,255,.78)",
+    backdropFilter: "blur(3px)",
+  },
+  miniTop: { fontWeight: 950, letterSpacing: "-0.01em" },
+  miniBottom: { marginTop: 6, fontSize: 13, opacity: 0.75, lineHeight: 1.45 },
+
+  // Verification card (clean + premium)
+  card: {
+    border: "1px solid rgba(0,0,0,.14)",
+    borderRadius: 14,
+    padding: 16,
+    background: "rgba(255,255,255,.78)",
+    backdropFilter: "blur(6px)",
+    boxShadow: "0 18px 44px rgba(0,0,0,.10)",
+  },
+  cardTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  cardTitle: { fontWeight: 950, letterSpacing: "-0.02em", fontSize: 16, textTransform: "uppercase" },
+  cardSub: { marginTop: 6, fontSize: 13, opacity: 0.78, lineHeight: 1.5, maxWidth: 360 },
+
+  badge: {
+    fontSize: 11,
+    fontWeight: 950,
+    letterSpacing: "0.10em",
+    textTransform: "uppercase",
+    padding: "8px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,88,24,.35)",
+    background: "rgba(255,88,24,.10)",
+    opacity: 0.95,
+    whiteSpace: "nowrap",
+  },
 
   form: { marginTop: 12, display: "flex", flexDirection: "column", gap: 10 },
   label: {
     fontSize: 12,
     fontWeight: 900,
-    opacity: 0.78,
-    letterSpacing: "0.06em",
+    opacity: 0.80,
+    letterSpacing: "0.08em",
     textTransform: "uppercase",
   },
   input: {
     width: "100%",
-    padding: "10px 12px",
-    borderRadius: 8,
+    padding: "12px 12px",
+    borderRadius: 10,
     border: "1px solid rgba(0,0,0,.18)",
     outline: "none",
     fontSize: 14,
     background: "white",
   },
-  verifyBtn: { width: "100%", padding: "10px 12px", borderRadius: 8 },
+  verifyBtn: {
+    width: "100%",
+    padding: "12px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(0,0,0,.16)",
+    background: "rgba(0,0,0,.92)",
+    color: "white",
+    fontWeight: 900,
+    letterSpacing: "-0.01em",
+    boxShadow: "0 16px 34px rgba(0,0,0,.16)",
+  },
 
   status: {
     padding: "10px 12px",
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid rgba(0,0,0,.12)",
     fontSize: 13,
-    lineHeight: 1.4,
+    lineHeight: 1.45,
   },
-  privacy: { fontSize: 12, opacity: 0.65, lineHeight: 1.4, marginTop: 2 },
+  privacy: { fontSize: 12, opacity: 0.68, lineHeight: 1.45, marginTop: 2 },
 
-  panelRule: { height: 1, background: "rgba(0,0,0,.08)", margin: "14px 0" },
-  panelWhy: { display: "flex", flexDirection: "column", gap: 6 },
-  panelWhyTitle: { fontWeight: 950, letterSpacing: "-0.01em" },
-  panelWhyText: { fontSize: 13, opacity: 0.75, lineHeight: 1.45 },
+  section: {
+    position: "relative",
+    zIndex: 1,
+    paddingTop: 22,
+    paddingBottom: 18,
+    borderTop: "1px solid rgba(0,0,0,.10)",
+    marginTop: 6,
+  },
+  h2: { fontSize: 18, letterSpacing: "-0.02em", margin: "0 0 8px 0", fontWeight: 950 },
+  p: { margin: 0, opacity: 0.80, lineHeight: 1.7, maxWidth: 820 },
 
-  why: { position: "relative", zIndex: 1, paddingTop: 22, paddingBottom: 18, borderTop: "1px solid rgba(0,0,0,.10)", marginTop: 6 },
-  h2: { fontSize: 18, letterSpacing: "-0.02em", margin: "0 0 8px 0", fontWeight: 950, textTransform: "uppercase" },
-  whyP: { margin: 0, opacity: 0.8, lineHeight: 1.65, maxWidth: 780 },
-
-  rule: { height: 1, background: "rgba(0,0,0,.10)", margin: "14px 0" },
-
-  bullets: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 },
-  bullet: {
+  features: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 14 },
+  feature: {
     padding: 12,
-    borderRadius: 12,
-    background: "rgba(255,255,255,.90)",
+    borderRadius: 14,
     border: "1px solid rgba(0,0,0,.10)",
-    boxShadow: "0 10px 24px rgba(0,0,0,.05)",
-    backdropFilter: "blur(2px)",
+    background: "rgba(255,255,255,.80)",
+    backdropFilter: "blur(4px)",
   },
-  bulletTitle: { fontWeight: 950, letterSpacing: "-0.01em" },
-  bulletBody: { marginTop: 6, fontSize: 13, opacity: 0.76, lineHeight: 1.45 },
+  featureTitle: { fontWeight: 950, letterSpacing: "-0.01em" },
+  featureBody: { marginTop: 6, fontSize: 13, opacity: 0.75, lineHeight: 1.45 },
 
   footer: {
     position: "relative",
