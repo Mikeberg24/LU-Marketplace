@@ -4,6 +4,10 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+function isLibertyEmail(email: string) {
+  // Change this if you want to allow alumni domains, etc.
+  return /@liberty\.edu$/i.test(email.trim());
+}
 
 function LoginInner() {
   const searchParams = useSearchParams();
@@ -13,64 +17,91 @@ function LoginInner() {
 
   const nextPath = useMemo(() => {
     const n = searchParams.get("next");
-    // keep it safe: only allow internal paths
     if (!n || !n.startsWith("/")) return "/marketplace";
     return n;
   }, [searchParams]);
 
   async function sendMagicLink() {
+    const trimmed = email.trim().toLowerCase();
     setStatus(null);
 
-    const trimmed = email.trim();
     if (!trimmed) {
-      setStatus("Please enter your email.");
+      setStatus("Enter your email address.");
+      return;
+    }
+
+    // Optional: enforce Liberty email (recommended for QR flyer flow)
+    if (!isLibertyEmail(trimmed)) {
+      setStatus("Use your Liberty email (…@liberty.edu).");
       return;
     }
 
     setLoading(true);
     try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+        nextPath
+      )}`;
+
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
-          // after Supabase confirms, it will send user to /auth/callback
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            nextPath
-          )}`,
+          emailRedirectTo: redirectTo,
         },
       });
 
       if (error) throw error;
 
-      setStatus("Check your email for the sign-in link.");
-      setEmail("");
+      setStatus("Sent! Check your inbox (and spam) for the sign-in link.");
+      // keep email in the box so they can resend easily
     } catch (e: any) {
-      setStatus(e?.message ?? "Something went wrong.");
+      setStatus(e?.message ?? "Could not send the link. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function resend() {
+    // same function, just clearer button label
+    await sendMagicLink();
+  }
+
   return (
-    <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>Sign in</h1>
+    <main
+      style={{
+        maxWidth: 520,
+        margin: "0 auto",
+        padding: "56px 16px",
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+      }}
+    >
+      <h1 style={{ fontSize: 34, fontWeight: 900, marginBottom: 6 }}>
+        Sign in
+      </h1>
       <p style={{ opacity: 0.75, marginBottom: 24 }}>
-        Use your Liberty email for verification.
+        We’ll email you a one-time sign-in link.
       </p>
 
-      <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
-        Email
+      <label style={{ display: "block", fontWeight: 800, marginBottom: 8 }}>
+        Liberty email
       </label>
+
       <input
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@liberty.edu"
         type="email"
+        autoComplete="email"
+        inputMode="email"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") sendMagicLink();
+        }}
         style={{
           width: "100%",
           padding: "12px 14px",
           borderRadius: 12,
-          border: "1px solid rgba(0,0,0,0.15)",
+          border: "1px solid rgba(0,0,0,0.18)",
           marginBottom: 14,
+          outline: "none",
         }}
       />
 
@@ -82,18 +113,44 @@ function LoginInner() {
           padding: "12px 14px",
           borderRadius: 12,
           border: "none",
-          fontWeight: 800,
+          fontWeight: 900,
           cursor: loading ? "not-allowed" : "pointer",
+          background: "#111",
+          color: "#fff",
         }}
       >
-        {loading ? "Sending..." : "Send magic link"}
+        {loading ? "Sending…" : "Send sign-in link"}
       </button>
 
-      {status && (
-        <p style={{ marginTop: 14, fontWeight: 600, opacity: 0.85 }}>
-          {status}
+      <button
+        onClick={resend}
+        disabled={loading || !email.trim()}
+        style={{
+          width: "100%",
+          padding: "12px 14px",
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,0.15)",
+          fontWeight: 800,
+          cursor: loading || !email.trim() ? "not-allowed" : "pointer",
+          background: "transparent",
+          marginTop: 10,
+        }}
+      >
+        Resend
+      </button>
+
+      <div style={{ marginTop: 18 }}>
+        {status && (
+          <p style={{ fontWeight: 700, opacity: 0.9, lineHeight: 1.35 }}>
+            {status}
+          </p>
+        )}
+
+        <p style={{ marginTop: 10, fontSize: 13, opacity: 0.65 }}>
+          Tip: If the email opens inside Gmail’s preview browser, tap “Open in
+          browser” for the smoothest sign-in.
         </p>
-      )}
+      </div>
     </main>
   );
 }
