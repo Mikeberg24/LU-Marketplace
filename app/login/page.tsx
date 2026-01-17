@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "@/app/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function LoginPage() {
+function LoginInner() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -12,15 +12,17 @@ export default function LoginPage() {
 
   const nextPath = useMemo(() => {
     const n = searchParams.get("next");
-    if (!n || !n.startsWith("/")) return "/marketplace";
-    return n;
+    return n && n.startsWith("/") ? n : "/marketplace";
   }, [searchParams]);
 
   async function sendMagicLink() {
     setStatus(null);
 
     const trimmed = email.trim();
-    if (!trimmed) return setStatus("Enter your email.");
+    if (!trimmed) {
+      setStatus("Enter your email.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -30,12 +32,14 @@ export default function LoginPage() {
 
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
-        options: { emailRedirectTo: redirectTo },
+        options: {
+          emailRedirectTo: redirectTo,
+        },
       });
 
       if (error) throw error;
 
-      setStatus("Check your email for the sign-in link.");
+      setStatus("Sent! Check your email for the sign-in link.");
       setEmail("");
     } catch (e: any) {
       setStatus(e?.message ?? "Something went wrong.");
@@ -46,13 +50,15 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>Sign in</h1>
+      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>
+        Sign in
+      </h1>
       <p style={{ opacity: 0.75, marginBottom: 24 }}>
         We’ll email you a one-time sign-in link.
       </p>
 
       <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
-        Email
+        Liberty email
       </label>
       <input
         value={email}
@@ -79,6 +85,7 @@ export default function LoginPage() {
           border: "none",
           fontWeight: 800,
           cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.7 : 1,
         }}
       >
         {loading ? "Sending..." : "Send sign-in link"}
@@ -90,5 +97,13 @@ export default function LoginPage() {
         </p>
       )}
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
