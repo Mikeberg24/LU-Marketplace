@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-function LoginInner() {
+export default function LoginPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -17,12 +17,8 @@ function LoginInner() {
 
   async function sendMagicLink() {
     setStatus(null);
-
     const trimmed = email.trim();
-    if (!trimmed) {
-      setStatus("Enter your email.");
-      return;
-    }
+    if (!trimmed) return setStatus("Enter your email.");
 
     setLoading(true);
     try {
@@ -32,14 +28,12 @@ function LoginInner() {
 
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
-        options: {
-          emailRedirectTo: redirectTo,
-        },
+        options: { emailRedirectTo: redirectTo },
       });
 
       if (error) throw error;
 
-      setStatus("Sent! Check your email for the sign-in link.");
+      setStatus("Check your email for the sign-in link.");
       setEmail("");
     } catch (e: any) {
       setStatus(e?.message ?? "Something went wrong.");
@@ -50,9 +44,7 @@ function LoginInner() {
 
   return (
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>
-        Sign in
-      </h1>
+      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>Sign in</h1>
       <p style={{ opacity: 0.75, marginBottom: 24 }}>
         We’ll email you a one-time sign-in link.
       </p>
@@ -60,12 +52,12 @@ function LoginInner() {
       <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
         Liberty email
       </label>
+
       <input
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@liberty.edu"
         type="email"
-        autoComplete="email"
         style={{
           width: "100%",
           padding: "12px 14px",
@@ -85,7 +77,6 @@ function LoginInner() {
           border: "none",
           fontWeight: 800,
           cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.7 : 1,
         }}
       >
         {loading ? "Sending..." : "Send sign-in link"}
@@ -97,13 +88,5 @@ function LoginInner() {
         </p>
       )}
     </main>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
-      <LoginInner />
-    </Suspense>
   );
 }

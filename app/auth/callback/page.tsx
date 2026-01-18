@@ -1,63 +1,30 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-function CallbackInner() {
+export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [msg, setMsg] = useState("Signing you in...");
-
-  const safeNext = useMemo(() => {
-    const next = searchParams.get("next") || "/marketplace";
-    return next.startsWith("/") ? next : "/marketplace";
-  }, [searchParams]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const fail = () => {
-      if (cancelled) return;
-      setMsg("Sign-in link failed. Please request a new link.");
-      router.replace(`/login?next=${encodeURIComponent(safeNext)}`);
-    };
-
     const run = async () => {
-      try {
-        const code = searchParams.get("code");
+      const next = searchParams.get("next") || "/marketplace";
+      const safeNext = next.startsWith("/") ? next : "/marketplace";
 
-        if (!code) return fail();
+      const { error } = await supabase.auth.getSession();
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) return fail();
-
-        if (!cancelled) router.replace(safeNext);
-      } catch {
-        fail();
+      if (error) {
+        router.replace(`/login?next=${encodeURIComponent(safeNext)}`);
+        return;
       }
+
+      router.replace(safeNext);
     };
 
     run();
-    return () => {
-      cancelled = true;
-    };
-  }, [router, searchParams, safeNext]);
+  }, [router, searchParams]);
 
-  return (
-    <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>{msg}</h1>
-      <p style={{ opacity: 0.7 }}>
-        If this takes more than a few seconds, request a new link.
-      </p>
-    </main>
-  );
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
-      <CallbackInner />
-    </Suspense>
-  );
+  return <p style={{ padding: 40 }}>Signing you in…</p>;
 }
