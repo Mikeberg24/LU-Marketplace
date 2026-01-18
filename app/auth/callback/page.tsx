@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function AuthCallbackPage() {
+function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -13,6 +13,7 @@ export default function AuthCallbackPage() {
       const next = searchParams.get("next") || "/marketplace";
       const safeNext = next.startsWith("/") ? next : "/marketplace";
 
+      // This will parse the URL tokens/code and store the session (localStorage)
       const { error } = await supabase.auth.getSession();
 
       if (error) {
@@ -27,4 +28,12 @@ export default function AuthCallbackPage() {
   }, [router, searchParams]);
 
   return <p style={{ padding: 40 }}>Signing you in…</p>;
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<p style={{ padding: 40 }}>Signing you in…</p>}>
+      <CallbackInner />
+    </Suspense>
+  );
 }
