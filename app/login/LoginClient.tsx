@@ -16,77 +16,44 @@ export default function LoginClient() {
   }, [searchParams]);
 
   async function sendMagicLink() {
-    setStatus(null);
-    const trimmed = email.trim();
-    if (!trimmed) return setStatus("Enter your email.");
-
     setLoading(true);
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-        nextPath
-      )}`;
+    setStatus(null);
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: trimmed,
-        options: { emailRedirectTo: redirectTo },
-      });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          nextPath
+        )}`,
+      },
+    });
 
-      if (error) throw error;
-
+    if (error) {
+      setStatus(error.message);
+    } else {
       setStatus("Check your email for the sign-in link.");
-      setEmail("");
-    } catch (e: any) {
-      setStatus(e?.message ?? "Something went wrong.");
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   }
 
   return (
-    <main style={{ maxWidth: 520, margin: "0 auto", padding: "56px 16px" }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}>Sign in</h1>
-      <p style={{ opacity: 0.75, marginBottom: 24 }}>
-        We’ll email you a one-time sign-in link.
-      </p>
-
-      <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
-        Liberty email
-      </label>
+    <div style={{ maxWidth: 420, margin: "80px auto" }}>
+      <h1>Sign in</h1>
 
       <input
+        type="email"
+        placeholder="you@liberty.edu"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@liberty.edu"
-        type="email"
-        style={{
-          width: "100%",
-          padding: "12px 14px",
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,0.15)",
-          marginBottom: 14,
-        }}
+        style={{ width: "100%", padding: 10, marginBottom: 12 }}
       />
 
-      <button
-        onClick={sendMagicLink}
-        disabled={loading}
-        style={{
-          width: "100%",
-          padding: "12px 14px",
-          borderRadius: 12,
-          border: "none",
-          fontWeight: 800,
-          cursor: loading ? "not-allowed" : "pointer",
-        }}
-      >
-        {loading ? "Sending..." : "Send sign-in link"}
+      <button onClick={sendMagicLink} disabled={loading}>
+        {loading ? "Sending…" : "Send sign-in link"}
       </button>
 
-      {status && (
-        <p style={{ marginTop: 14, fontWeight: 600, opacity: 0.85 }}>
-          {status}
-        </p>
-      )}
-    </main>
+      {status && <p style={{ marginTop: 12 }}>{status}</p>}
+    </div>
   );
 }
