@@ -2,26 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+
+const KEY = "lu_logged_in_email";
 
 export default function LoginClient() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const login = async () => {
+  const login = () => {
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const e = email.trim().toLowerCase();
 
-    if (error) {
-      setError(error.message);
+    if (!e.endsWith("@liberty.edu")) {
+      setError("Use your Liberty email (@liberty.edu).");
       return;
     }
+
+    // "Fake login" — no Supabase, no email, no password
+    localStorage.setItem(KEY, e);
 
     router.push("/marketplace");
   };
@@ -31,16 +31,9 @@ export default function LoginClient() {
       <h1>Login</h1>
 
       <input
-        placeholder="email"
+        placeholder="you@liberty.edu"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <input
-        placeholder="password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(ev) => setEmail(ev.target.value)}
       />
 
       <button onClick={login}>Login</button>
